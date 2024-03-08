@@ -1,6 +1,8 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
+#include <unordered_map>
+#include <sstream>
 
 // Assume Node class has an identifier
 class Node {
@@ -30,6 +32,7 @@ class Graph {
 private:
     std::vector<Node*> nodes; // A list of all nodes in the graph
     std::vector<Connection> connections; // A list of all connections
+    std::unordered_map<int, Node*> nodeMap;
 
 public:
     ~Graph() {
@@ -57,7 +60,10 @@ public:
 
     // Add a node to the graph
     void addNode(Node* node) {
-        nodes.push_back(node);
+        if (nodeMap.find(node->identifier) == nodeMap.end()) {
+            nodes.push_back(node);
+            nodeMap[node->identifier] = node;
+        }
     }
 
     void printGraph() const {
@@ -85,20 +91,56 @@ public:
 
         out << "}" << std::endl;
     }
+
+    void loadFromCSV(const std::string& filename) {
+        std::ifstream file(filename);
+        std::string line;
+
+        while (getline(file, line)) {
+            std::stringstream linestream(line);
+            int fromID, toID;
+            float cost;
+            char delimiter;
+
+            linestream >> fromID >> delimiter >> toID >> delimiter >> cost;
+
+            Node* fromNode;
+            Node* toNode;
+
+            // Check if the node already exists, if not create a new node
+            if (nodeMap.find(fromID) == nodeMap.end()) {
+                fromNode = new Node(fromID);
+                addNode(fromNode);
+            } else {
+                fromNode = nodeMap[fromID];
+            }
+
+            if (nodeMap.find(toID) == nodeMap.end()) {
+                toNode = new Node(toID);
+                addNode(toNode);
+            } else {
+                toNode = nodeMap[toID];
+            }
+
+            addConnection(fromNode, toNode, cost);
+        }
+    }
 };
 
 int main() {
     // Create a graph
     Graph graph;
+    graph.loadFromCSV("subset_airport_distances_revised.csv");
 
-    // Create and add nodes to the graph
+
+/*     // Create and add nodes to the graph
     Node* node1 = new Node(1);
     Node* node2 = new Node(2);
     graph.addNode(node1);
     graph.addNode(node2);
 
     // Add a connection between the nodes
-    graph.addConnection(node1, node2, 10.0f);
+    graph.addConnection(node1, node2, 10.0f); */
 
     // Print the graph
     graph.printGraph();
