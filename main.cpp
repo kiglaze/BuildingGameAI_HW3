@@ -6,6 +6,7 @@
 #include <unordered_set>
 #include <limits>
 #include <queue>
+#include <algorithm>
 
 // Assume Node class has an identifier
 class Node {
@@ -130,19 +131,17 @@ public:
     }
 
 
-
-    // Dijkstra's algorithm to find the shortest path from the source node to all other nodes
-    void dijkstra(int sourceId) {
+    void dijkstra(int sourceId, std::unordered_map<int, int>& predecessors) {
         std::unordered_map<int, float> distances;
-        std::unordered_map<int, int> predecessors;
         auto comp = [&distances](int lhs, int rhs) {
             return distances[lhs] > distances[rhs];
         };
         std::priority_queue<int, std::vector<int>, decltype(comp)> pq(comp);
 
-        // Initialize distances to infinity and source distance to 0
+        // Initialize distances to infinity, source distance to 0, and predecessors map
         for (const auto& node : nodes) {
             distances[node->identifier] = std::numeric_limits<float>::infinity();
+            predecessors[node->identifier] = -1; // Use -1 to indicate no predecessor
         }
         distances[sourceId] = 0.0f;
 
@@ -151,10 +150,9 @@ public:
         while (!pq.empty()) {
             int currentNodeId = pq.top();
             pq.pop();
-            Node* currentNode = nodeMap[currentNodeId];
 
             // For each neighbor of the current node
-            for (const auto& conn : getConnections(*currentNode)) {
+            for (const auto& conn : getConnections(*nodeMap[currentNodeId])) {
                 int neighborId = conn.toNode->identifier;
                 float weight = conn.cost;
                 float distanceThroughU = distances[currentNodeId] + weight;
@@ -166,12 +164,25 @@ public:
             }
         }
 
-        // Optionally: Print the shortest distances to all nodes from source
-        for (const auto& dist : distances) {
-            std::cout << "Shortest distance from node " << sourceId << " to node " << dist.first << " is " << dist.second << std::endl;
-        }
+        // Distances and predecessors are now populated
+        // You can use the predecessors map to reconstruct the shortest path
     }
 
+    // Function to reconstruct the shortest path from source to target
+    std::vector<int> getShortestPath(int sourceId, int targetId, const std::unordered_map<int, int>& predecessors) {
+        std::vector<int> path;
+        for (int at = targetId; at != -1; at = predecessors.at(at)) {
+            path.push_back(at);
+        }
+        std::reverse(path.begin(), path.end()); // The path is constructed in reverse
+
+        // Check if path starts with the sourceId; if not, path is unreachable
+        if (path.front() != sourceId) {
+            return {}; // Return an empty path to indicate no path found
+        }
+        
+        return path;
+    }
 };
 
 int main() {
@@ -190,11 +201,21 @@ int main() {
     graph.addConnection(node1, node2, 10.0f); */
 
     // Print the graph
-    graph.printGraph();
+    //graph.printGraph();
 
     graph.generateDotFile("graph_dot_file.dot");
 
-    graph.dijkstra(1052907);
+    std::unordered_map<int, int> predecessors;
+    int sourceNodeId = 1052907; // Example source node ID
+    graph.dijkstra(sourceNodeId, predecessors);
+    // To get and print the shortest path from source to another node, for example, node 4
+    int targetNodeId = 1171603;
+    std::vector<int> path = graph.getShortestPath(sourceNodeId, targetNodeId, predecessors);
+    std::cout << "Shortest path from " << sourceNodeId << " to " << targetNodeId << ": ";
+    for (int node : path) {
+        std::cout << node << " ";
+    }
+    std::cout << std::endl;
 
     // The Graph destructor will delete the nodes
     return 0;
