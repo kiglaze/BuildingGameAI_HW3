@@ -3,6 +3,9 @@
 #include <fstream>
 #include <unordered_map>
 #include <sstream>
+#include <unordered_set>
+#include <limits>
+#include <queue>
 
 // Assume Node class has an identifier
 class Node {
@@ -125,6 +128,50 @@ public:
             addConnection(fromNode, toNode, cost);
         }
     }
+
+
+
+    // Dijkstra's algorithm to find the shortest path from the source node to all other nodes
+    void dijkstra(int sourceId) {
+        std::unordered_map<int, float> distances;
+        std::unordered_map<int, int> predecessors;
+        auto comp = [&distances](int lhs, int rhs) {
+            return distances[lhs] > distances[rhs];
+        };
+        std::priority_queue<int, std::vector<int>, decltype(comp)> pq(comp);
+
+        // Initialize distances to infinity and source distance to 0
+        for (const auto& node : nodes) {
+            distances[node->identifier] = std::numeric_limits<float>::infinity();
+        }
+        distances[sourceId] = 0.0f;
+
+        pq.push(sourceId);
+
+        while (!pq.empty()) {
+            int currentNodeId = pq.top();
+            pq.pop();
+            Node* currentNode = nodeMap[currentNodeId];
+
+            // For each neighbor of the current node
+            for (const auto& conn : getConnections(*currentNode)) {
+                int neighborId = conn.toNode->identifier;
+                float weight = conn.cost;
+                float distanceThroughU = distances[currentNodeId] + weight;
+                if (distanceThroughU < distances[neighborId]) {
+                    distances[neighborId] = distanceThroughU;
+                    predecessors[neighborId] = currentNodeId;
+                    pq.push(neighborId);
+                }
+            }
+        }
+
+        // Optionally: Print the shortest distances to all nodes from source
+        for (const auto& dist : distances) {
+            std::cout << "Shortest distance from node " << sourceId << " to node " << dist.first << " is " << dist.second << std::endl;
+        }
+    }
+
 };
 
 int main() {
@@ -146,6 +193,8 @@ int main() {
     graph.printGraph();
 
     graph.generateDotFile("graph_dot_file.dot");
+
+    graph.dijkstra(1052907);
 
     // The Graph destructor will delete the nodes
     return 0;
