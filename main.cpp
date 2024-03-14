@@ -183,6 +183,63 @@ public:
         
         return path;
     }
+
+
+    float aStarHeuristic(int id1, int id2) {
+        return 0.0f; 
+    }
+
+    void aStar(int sourceId, int targetId, std::unordered_map<int, int>& predecessors) {
+        std::unordered_map<int, float> gScore, fScore;
+        // Prioritize neighboring nodes with the lowest fScore values.
+        auto comp = [&fScore](int lhs, int rhs) {
+            return fScore[lhs] > fScore[rhs];
+        };
+        std::priority_queue<int, std::vector<int>, decltype(comp)> openSet(comp);
+
+        // Initialize gScore (cost so far) to infinity, except for the source node
+        for (const auto& node : nodes) {
+            gScore[node->identifier] = std::numeric_limits<float>::infinity();
+            fScore[node->identifier] = std::numeric_limits<float>::infinity();
+            predecessors[node->identifier] = -1; // Use -1 to indicate no predecessor
+        }
+        gScore[sourceId] = 0.0f;
+        fScore[sourceId] = aStarHeuristic(sourceId, targetId);
+
+        openSet.push(sourceId);
+
+        std::unordered_set<int> openSetItems;
+        while (!openSet.empty()) {
+            int currentNodeId = openSet.top();
+            openSet.pop();
+            openSetItems.erase(currentNodeId);
+
+            // If the goal is reached, exit the loop
+            if (currentNodeId == targetId) break;
+
+            // For each neighbor of the current node
+            for (const auto& conn : getConnections(*nodeMap[currentNodeId])) {
+                int neighborId = conn.toNode->identifier;
+                float tentative_gScore = gScore[currentNodeId] + conn.cost;
+
+                if (tentative_gScore < gScore[neighborId]) {
+                    // This path to neighbor is better than any previous one. Record it!
+                    predecessors[neighborId] = currentNodeId;
+                    gScore[neighborId] = tentative_gScore;
+                    fScore[neighborId] = gScore[neighborId] + aStarHeuristic(neighborId, targetId);
+
+                    if (openSetItems.find(neighborId) == openSetItems.end()) {
+                        openSet.push(neighborId);
+                        openSetItems.insert(neighborId);
+                    }
+                }
+            }
+        }
+
+        // Distances and predecessors are now populated
+        // Use the predecessors map to reconstruct the shortest path
+    }
+
 };
 
 int main() {
@@ -207,15 +264,17 @@ int main() {
 
     std::unordered_map<int, int> predecessors;
     int sourceNodeId = 1052907; // Example source node ID
-    graph.dijkstra(sourceNodeId, predecessors);
+    ////graph.dijkstra(sourceNodeId, predecessors);
     // To get and print the shortest path from source to another node, for example, node 4
     int targetNodeId = 1171603;
+    graph.aStar(sourceNodeId, targetNodeId, predecessors);
+
     std::vector<int> path = graph.getShortestPath(sourceNodeId, targetNodeId, predecessors);
     std::cout << "Shortest path from " << sourceNodeId << " to " << targetNodeId << ": ";
     for (int node : path) {
         std::cout << node << " ";
     }
-    std::cout << std::endl;
+    std::cout << std::endl; 
 
     // The Graph destructor will delete the nodes
     return 0;
