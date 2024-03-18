@@ -80,6 +80,10 @@ public:
         }
     }
 
+    std::unordered_map<int, Node*> getNodeMap() {
+        return nodeMap;
+    }
+
     // Function to get a list of all connections outgoing from the given node.
     std::vector<Connection> getConnections(const Node& fromNode) const {
         std::vector<Connection> result;
@@ -308,10 +312,22 @@ int main() {
 
     std::vector<int> path = graph.getShortestPath(sourceNodeId, targetNodeId, predecessors);
     std::cout << "Shortest path from " << sourceNodeId << " to " << targetNodeId << ": ";
-    for (int node : path) {
-        std::cout << node << " ";
+    float totalCost = 0.0;
+    if (!path.empty()) {
+        for (size_t i = 0; i < path.size() - 1; ++i) {
+            auto connections = graph.getConnections(*graph.getNodeMap()[path[i]]);
+            for (const auto& conn : connections) {
+                if (conn.toNode->getId() == path[i + 1]) {
+                    totalCost += conn.getCost();
+                    std::cout << conn.fromNode->getId() << " to " << conn.toNode->getId() << " (cost: " << conn.getCost() << "), ";
+                    break;
+                }
+            }
+        }
+        std::cout << "Total cost: " << totalCost << std::endl;
+    } else {
+        std::cout << "No path found." << std::endl;
     }
-    std::cout << std::endl;
 
     // The Graph destructor will delete the nodes
     return 0;
