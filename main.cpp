@@ -7,6 +7,7 @@
 #include <limits>
 #include <queue>
 #include <algorithm>
+#include <cmath>
 
 // Assume Node class has an identifier
 class Node {
@@ -225,10 +226,37 @@ public:
         return path;
     }
 
+    // Convert degrees to radians.
+    double degToRad(double degrees) {
+        return degrees * M_PI / 180.0;
+    }
+
+    // Calculate the distance between 2 GPS co-ordinates on the Earth.
+    double calculateEarthDistance(double lat1, double lon1, double lat2, double lon2) {
+        // Convert latitude and longitude from degrees to radians
+        lat1 = degToRad(lat1);
+        lon1 = degToRad(lon1);
+        lat2 = degToRad(lat2);
+        lon2 = degToRad(lon2);
+
+        // Calculate the distance
+        double distance = acos(sin(lat1) * sin(lat2) + cos(lat1) * cos(lat2) * cos(lon2 - lon1)) * 3958.8;
+
+        return distance;
+    }
 
     float aStarHeuristic(int id1, int id2) {
-        return 0.0f; 
+        auto nodeMap = getNodeMap(); // Assuming getNodeMap() returns std::unordered_map<int, Node*>
+        
+        Node* node1 = nodeMap[id1];
+        Node* node2 = nodeMap[id2];
+        
+        if (node1 == nullptr || node2 == nullptr) return std::numeric_limits<float>::infinity();
+        
+        // lat1, lon1, lat2, lon2
+        return calculateEarthDistance(node1->getY(), node1->getX(), node2->getY(), node2->getX());
     }
+
 
     void aStar(int sourceId, int targetId, std::unordered_map<int, int>& predecessors) {
         std::unordered_map<int, float> gScore, fScore;
