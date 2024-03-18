@@ -14,3 +14,8 @@ g++ -o main main.cpp
         ```
         dot -Tpng graph_dot_file.dot -o graph_dot_file.png
         ```
+
+### To create .svg file using graphviz from the terminal:
+```
+dot -Tsvg graph_dot_file.dot -o graph_dot_file.svg
+```

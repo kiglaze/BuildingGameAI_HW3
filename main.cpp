@@ -10,11 +10,45 @@
 
 // Assume Node class has an identifier
 class Node {
-public:
+private:
     int identifier; // Assume there is an identifier for each node for simplicity
+    float x, y;     // Coordinates of the node
 
-    Node(int id) : identifier(id) {} // Constructor to set the node's identifier
+public:
+    // Constructor to set the node's identifier and coordinates
+    Node(int id, float xCoord, float yCoord) : identifier(id), x(xCoord), y(yCoord) {}
+
+    // Getter for identifier
+    int getId() const {
+        return identifier;
+    }
+
+    // Getter for x
+    float getX() const {
+        return x;
+    }
+
+    // Setter for x
+    void setX(float xCoord) {
+        x = xCoord;
+    }
+
+    // Getter for y
+    float getY() const {
+        return y;
+    }
+
+    // Setter for y
+    void setY(float yCoord) {
+        y = yCoord;
+    }
+
+    // If you need to change the identifier (which is less common), add setter for identifier as well
+    void setId(int id) {
+        identifier = id;
+    }
 };
+
 
 // Forward declaration of Node to satisfy the Connection's need for Node
 class Connection {
@@ -50,7 +84,7 @@ public:
     std::vector<Connection> getConnections(const Node& fromNode) const {
         std::vector<Connection> result;
         for (const auto& conn : connections) {
-            if (conn.fromNode->identifier == fromNode.identifier) {
+            if (conn.fromNode->getId() == fromNode.getId()) {
                 result.push_back(conn);
             }
         }
@@ -64,18 +98,18 @@ public:
 
     // Add a node to the graph
     void addNode(Node* node) {
-        if (nodeMap.find(node->identifier) == nodeMap.end()) {
+        if (nodeMap.find(node->getId()) == nodeMap.end()) {
             nodes.push_back(node);
-            nodeMap[node->identifier] = node;
+            nodeMap[node->getId()] = node;
         }
     }
 
     void printGraph() const {
         for (const auto& node : nodes) {
-            std::cout << "Node " << node->identifier << " connects to: ";
+            std::cout << "Node " << node->getId() << " connects to: ";
             auto connections = getConnections(*node);
             for (const auto& conn : connections) {
-                std::cout << conn.toNode->identifier << " (cost: " << conn.getCost() << "), ";
+                std::cout << conn.toNode->getId() << " (cost: " << conn.getCost() << "), ";
             }
             std::cout << std::endl;
         }
@@ -88,7 +122,7 @@ public:
         for (const auto& node : nodes) {
             auto connections = getConnections(*node);
             for (const auto& conn : connections) {
-                out << node->identifier << " -> " << conn.toNode->identifier;
+                out << node->getId() << " -> " << conn.toNode->getId();
                 out << " [label=\"" << conn.getCost() << "\"];" << std::endl;
             }
         }
@@ -100,27 +134,30 @@ public:
         std::ifstream file(filename);
         std::string line;
 
+        // Ingore the first line, which is the header.
+        getline(file, line);
+
         while (getline(file, line)) {
             std::stringstream linestream(line);
             int fromID, toID;
-            float cost;
+            float cost, xCoordFrom, yCoordFrom, xCoordTo, yCoordTo;
             char delimiter;
 
-            linestream >> fromID >> delimiter >> toID >> delimiter >> cost;
+            linestream >> fromID >> delimiter >> toID >> delimiter >> cost >> delimiter >> xCoordFrom >> delimiter >> yCoordFrom >> delimiter >> xCoordTo >> delimiter >> yCoordTo;
 
             Node* fromNode;
             Node* toNode;
 
             // Check if the node already exists, if not create a new node
             if (nodeMap.find(fromID) == nodeMap.end()) {
-                fromNode = new Node(fromID);
+                fromNode = new Node(fromID, xCoordFrom, yCoordFrom);
                 addNode(fromNode);
             } else {
                 fromNode = nodeMap[fromID];
             }
 
             if (nodeMap.find(toID) == nodeMap.end()) {
-                toNode = new Node(toID);
+                toNode = new Node(toID, xCoordTo, yCoordTo);
                 addNode(toNode);
             } else {
                 toNode = nodeMap[toID];
@@ -140,8 +177,8 @@ public:
 
         // Initialize distances to infinity, source distance to 0, and predecessors map
         for (const auto& node : nodes) {
-            distances[node->identifier] = std::numeric_limits<float>::infinity();
-            predecessors[node->identifier] = -1; // Use -1 to indicate no predecessor
+            distances[node->getId()] = std::numeric_limits<float>::infinity();
+            predecessors[node->getId()] = -1; // Use -1 to indicate no predecessor
         }
         distances[sourceId] = 0.0f;
 
@@ -153,7 +190,7 @@ public:
 
             // For each neighbor of the current node
             for (const auto& conn : getConnections(*nodeMap[currentNodeId])) {
-                int neighborId = conn.toNode->identifier;
+                int neighborId = conn.toNode->getId();
                 float weight = conn.cost;
                 float distanceThroughU = distances[currentNodeId] + weight;
                 if (distanceThroughU < distances[neighborId]) {
@@ -199,9 +236,9 @@ public:
 
         // Initialize gScore (cost so far) to infinity, except for the source node
         for (const auto& node : nodes) {
-            gScore[node->identifier] = std::numeric_limits<float>::infinity();
-            fScore[node->identifier] = std::numeric_limits<float>::infinity();
-            predecessors[node->identifier] = -1; // Use -1 to indicate no predecessor
+            gScore[node->getId()] = std::numeric_limits<float>::infinity();
+            fScore[node->getId()] = std::numeric_limits<float>::infinity();
+            predecessors[node->getId()] = -1; // Use -1 to indicate no predecessor
         }
         gScore[sourceId] = 0.0f;
         fScore[sourceId] = aStarHeuristic(sourceId, targetId);
@@ -219,7 +256,7 @@ public:
 
             // For each neighbor of the current node
             for (const auto& conn : getConnections(*nodeMap[currentNodeId])) {
-                int neighborId = conn.toNode->identifier;
+                int neighborId = conn.toNode->getId();
                 float tentative_gScore = gScore[currentNodeId] + conn.cost;
 
                 if (tentative_gScore < gScore[neighborId]) {
@@ -263,10 +300,10 @@ int main() {
     graph.generateDotFile("graph_dot_file.dot");
 
     std::unordered_map<int, int> predecessors;
-    int sourceNodeId = 1052907; // Example source node ID
+    int sourceNodeId = 1145501; // Example source node ID
     ////graph.dijkstra(sourceNodeId, predecessors);
     // To get and print the shortest path from source to another node, for example, node 4
-    int targetNodeId = 1171603;
+    int targetNodeId = 1564301;
     graph.aStar(sourceNodeId, targetNodeId, predecessors);
 
     std::vector<int> path = graph.getShortestPath(sourceNodeId, targetNodeId, predecessors);
@@ -274,7 +311,7 @@ int main() {
     for (int node : path) {
         std::cout << node << " ";
     }
-    std::cout << std::endl; 
+    std::cout << std::endl;
 
     // The Graph destructor will delete the nodes
     return 0;
