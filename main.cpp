@@ -86,6 +86,54 @@ public:
         return nodeMap;
     }
 
+    void aStar(int sourceId, int targetId, std::function<float(int, int)> heuristicFun, std::unordered_map<int, int>& predecessors) {
+        std::unordered_map<int, float> gScore, fScore;
+        auto nodeMap = getNodeMap(); // Assume this exists and is populated elsewhere
+
+        auto comp = [&fScore](int lhs, int rhs) {
+            return fScore[lhs] > fScore[rhs];
+        };
+        std::priority_queue<int, std::vector<int>, decltype(comp)> openSet(comp);
+
+        for (const auto& pair : nodeMap) {
+            int nodeId = pair.first;
+            gScore[nodeId] = std::numeric_limits<float>::infinity();
+            fScore[nodeId] = std::numeric_limits<float>::infinity();
+            predecessors[nodeId] = -1; // Use -1 to indicate no predecessor
+        }
+        gScore[sourceId] = 0.0f;
+        fScore[sourceId] = heuristicFun(sourceId, targetId);
+
+        openSet.push(sourceId);
+
+        std::unordered_set<int> openSetItems {sourceId};
+
+        while (!openSet.empty()) {
+            int currentNodeId = openSet.top();
+            openSet.pop();
+            openSetItems.erase(currentNodeId);
+
+            if (currentNodeId == targetId) break;
+
+            for (const auto& conn : getConnections(*nodeMap[currentNodeId])) {
+                int neighborId = conn.toNode->getId();
+                float tentative_gScore = gScore[currentNodeId] + conn.cost;
+
+                if (tentative_gScore < gScore[neighborId]) {
+                    predecessors[neighborId] = currentNodeId;
+                    gScore[neighborId] = tentative_gScore;
+                    fScore[neighborId] = gScore[neighborId] + heuristicFun(neighborId, targetId);
+
+                    if (openSetItems.insert(neighborId).second) {
+                        openSet.push(neighborId);
+                    }
+                }
+            }
+        }
+
+        // Distances and predecessors are now populated
+        // Further processing can be done outside this function
+    }
 
 
     // Function to get a list of all connections outgoing from the given node.
@@ -249,9 +297,11 @@ public:
         return distance;
     }
 
+    void fun2(void (*fun)(int, int), int someVal1, int someVal2) {
+        fun(someVal1, someVal2);
+    }
 
-
-    float aStarHeuristic(int id1, int id2) {
+    float aStarHeuristicLatLonDist(int id1, int id2) {
         auto nodeMap = getNodeMap(); // Assuming getNodeMap() returns std::unordered_map<int, Node*>
         
         Node* node1 = nodeMap[id1];
@@ -262,56 +312,42 @@ public:
         return calculateEarthDistance(node1->getY(), node1->getX(), node2->getY(), node2->getX());
     }
 
-    void aStar(int sourceId, int targetId, std::unordered_map<int, int>& predecessors) {
-        std::unordered_map<int, float> gScore, fScore;
-        auto nodeMap = getNodeMap(); // Assume this exists and is populated elsewhere
+    float aStarHeuristicEarthManhattanDist(int id1, int id2) {
+        auto nodeMap = getNodeMap(); // Assuming getNodeMap() returns std::unordered_map<int, Node*>
+        
+        Node* node1 = nodeMap[id1];
+        Node* node2 = nodeMap[id2];
+        
+        if (node1 == nullptr || node2 == nullptr) return std::numeric_limits<float>::infinity();
 
-        auto comp = [&fScore](int lhs, int rhs) {
-            return fScore[lhs] > fScore[rhs];
-        };
-        std::priority_queue<int, std::vector<int>, decltype(comp)> openSet(comp);
+        double lat1 = degToRad(node1->getY());
+        double lon1 = degToRad(node1->getX());
+        double lat2 = degToRad(node2->getY());
+        double lon2 = degToRad(node2->getX());
 
-        for (const auto& pair : nodeMap) {
-            int nodeId = pair.first;
-            gScore[nodeId] = std::numeric_limits<float>::infinity();
-            fScore[nodeId] = std::numeric_limits<float>::infinity();
-            predecessors[nodeId] = -1; // Use -1 to indicate no predecessor
-        }
-        gScore[sourceId] = 0.0f;
-        fScore[sourceId] = aStarHeuristic(sourceId, targetId);
+        double avgLat = (lat1 + lat2)/2;
+        double deltaLon = fabsf(lon1 - lon2);
+        double deltaLat = fabsf(lat1 - lat2);
 
-        openSet.push(sourceId);
+        double earthRadiusMiles = 3958.8;
 
-        std::unordered_set<int> openSetItems {sourceId};
+        double diffVaryingLats = earthRadiusMiles * deltaLat;
+        double diffVaryingLons = earthRadiusMiles * deltaLon * cos(avgLat);
 
-        while (!openSet.empty()) {
-            int currentNodeId = openSet.top();
-            openSet.pop();
-            openSetItems.erase(currentNodeId);
-
-            if (currentNodeId == targetId) break;
-
-            for (const auto& conn : getConnections(*nodeMap[currentNodeId])) {
-                int neighborId = conn.toNode->getId();
-                float tentative_gScore = gScore[currentNodeId] + conn.cost;
-
-                if (tentative_gScore < gScore[neighborId]) {
-                    predecessors[neighborId] = currentNodeId;
-                    gScore[neighborId] = tentative_gScore;
-                    fScore[neighborId] = gScore[neighborId] + aStarHeuristic(neighborId, targetId);
-
-                    if (openSetItems.insert(neighborId).second) {
-                        openSet.push(neighborId);
-                    }
-                }
-            }
-        }
-
-        // Distances and predecessors are now populated
-        // Further processing can be done outside this function
+        return diffVaryingLats + diffVaryingLons;        
     }
 
+    void aStarLatLonDist(int sourceId, int targetId, std::unordered_map<int, int>& predecessors) {
+        // Here, 'this' is valid because we are in a non-static member function
+        this->aStar(sourceId, targetId,
+                    [this](int id1, int id2) { return this->aStarHeuristicLatLonDist(id1, id2); }, predecessors);
+    }
 
+    void aStarEarthManhattanDist(int sourceId, int targetId, std::unordered_map<int, int>& predecessors) {
+        // Here, 'this' is valid because we are in a non-static member function
+        this->aStar(sourceId, targetId,
+                    [this](int id1, int id2) { return this->aStarHeuristicEarthManhattanDist(id1, id2); }, predecessors);
+    }
 
 };
 
@@ -343,6 +379,10 @@ void printGraphShortestPath(Graph &graph, int sourceNodeId, int targetNodeId, st
     }
 }
 
+void printIt1(int id1, int id2) {
+    std::cout << "I like the number " << id1 << " and the number " << id2 << std::endl;
+}
+
 
 
 
@@ -369,16 +409,21 @@ int main()
 
     int sourceNodeId = 1145501; // Example source node ID
     int targetNodeId = 1564301;
+
+    //graph.fun2(printIt1, sourceNodeId, targetNodeId);
     
     std::unordered_map<int, int> predecessorsDijkstra;
     graph.dijkstra(sourceNodeId, predecessorsDijkstra);
     printGraphShortestPath(graph, sourceNodeId, targetNodeId, predecessorsDijkstra);
-    // To get and print the shortest path from source to another node, for example, node 4
     
-    std::unordered_map<int, int> predecessorsAStar;
-    //graph.aStar(1, 5, predecessorsAStar);
-    graph.aStar(sourceNodeId, targetNodeId, predecessorsAStar);
-    printGraphShortestPath(graph, sourceNodeId, targetNodeId, predecessorsAStar);
+    std::unordered_map<int, int> predecessorsAStarLatLon;
+    graph.aStarLatLonDist(sourceNodeId, targetNodeId, predecessorsAStarLatLon);
+    printGraphShortestPath(graph, sourceNodeId, targetNodeId, predecessorsAStarLatLon);
+
+    std::unordered_map<int, int> predecessorsAStarManhattan;
+    graph.aStarEarthManhattanDist(sourceNodeId, targetNodeId, predecessorsAStarManhattan);
+    printGraphShortestPath(graph, sourceNodeId, targetNodeId, predecessorsAStarManhattan);
+
 
     // The Graph destructor will delete the nodes
     return 0;
