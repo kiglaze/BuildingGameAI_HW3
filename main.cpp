@@ -1,4 +1,5 @@
 #include <iostream>
+#include <functional>
 #include <vector>
 #include <fstream>
 #include <unordered_map>
@@ -84,6 +85,8 @@ public:
     std::unordered_map<int, Node*> getNodeMap() {
         return nodeMap;
     }
+
+
 
     // Function to get a list of all connections outgoing from the given node.
     std::vector<Connection> getConnections(const Node& fromNode) const {
@@ -232,6 +235,7 @@ public:
     }
 
     // Calculate the distance between 2 GPS co-ordinates on the Earth.
+    // lat1, lon1, lat2, lon2
     double calculateEarthDistance(double lat1, double lon1, double lat2, double lon2) {
         // Convert latitude and longitude from degrees to radians
         lat1 = degToRad(lat1);
@@ -245,6 +249,8 @@ public:
         return distance;
     }
 
+
+
     float aStarHeuristic(int id1, int id2) {
         auto nodeMap = getNodeMap(); // Assuming getNodeMap() returns std::unordered_map<int, Node*>
         
@@ -253,65 +259,95 @@ public:
         
         if (node1 == nullptr || node2 == nullptr) return std::numeric_limits<float>::infinity();
         
-        // lat1, lon1, lat2, lon2
         return calculateEarthDistance(node1->getY(), node1->getX(), node2->getY(), node2->getX());
     }
 
-
     void aStar(int sourceId, int targetId, std::unordered_map<int, int>& predecessors) {
         std::unordered_map<int, float> gScore, fScore;
-        // Prioritize neighboring nodes with the lowest fScore values.
+        auto nodeMap = getNodeMap(); // Assume this exists and is populated elsewhere
+
         auto comp = [&fScore](int lhs, int rhs) {
             return fScore[lhs] > fScore[rhs];
         };
         std::priority_queue<int, std::vector<int>, decltype(comp)> openSet(comp);
 
-        // Initialize gScore (cost so far) to infinity, except for the source node
-        for (const auto& node : nodes) {
-            gScore[node->getId()] = std::numeric_limits<float>::infinity();
-            fScore[node->getId()] = std::numeric_limits<float>::infinity();
-            predecessors[node->getId()] = -1; // Use -1 to indicate no predecessor
+        for (const auto& pair : nodeMap) {
+            int nodeId = pair.first;
+            gScore[nodeId] = std::numeric_limits<float>::infinity();
+            fScore[nodeId] = std::numeric_limits<float>::infinity();
+            predecessors[nodeId] = -1; // Use -1 to indicate no predecessor
         }
         gScore[sourceId] = 0.0f;
         fScore[sourceId] = aStarHeuristic(sourceId, targetId);
 
         openSet.push(sourceId);
 
-        std::unordered_set<int> openSetItems;
+        std::unordered_set<int> openSetItems {sourceId};
+
         while (!openSet.empty()) {
             int currentNodeId = openSet.top();
             openSet.pop();
             openSetItems.erase(currentNodeId);
 
-            // If the goal is reached, exit the loop
             if (currentNodeId == targetId) break;
 
-            // For each neighbor of the current node
             for (const auto& conn : getConnections(*nodeMap[currentNodeId])) {
                 int neighborId = conn.toNode->getId();
                 float tentative_gScore = gScore[currentNodeId] + conn.cost;
 
                 if (tentative_gScore < gScore[neighborId]) {
-                    // This path to neighbor is better than any previous one. Record it!
                     predecessors[neighborId] = currentNodeId;
                     gScore[neighborId] = tentative_gScore;
                     fScore[neighborId] = gScore[neighborId] + aStarHeuristic(neighborId, targetId);
 
-                    if (openSetItems.find(neighborId) == openSetItems.end()) {
+                    if (openSetItems.insert(neighborId).second) {
                         openSet.push(neighborId);
-                        openSetItems.insert(neighborId);
                     }
                 }
             }
         }
 
         // Distances and predecessors are now populated
-        // Use the predecessors map to reconstruct the shortest path
+        // Further processing can be done outside this function
     }
+
+
 
 };
 
-int main() {
+void printGraphShortestPath(Graph &graph, int sourceNodeId, int targetNodeId, std::unordered_map<int, int> &predecessors)
+{
+    std::vector<int> path = graph.getShortestPath(sourceNodeId, targetNodeId, predecessors);
+    std::cout << "Shortest path from " << sourceNodeId << " to " << targetNodeId << ": ";
+    float totalCost = 0.0;
+    if (!path.empty())
+    {
+        for (size_t i = 0; i < path.size() - 1; ++i)
+        {
+            auto connections = graph.getConnections(*graph.getNodeMap()[path[i]]);
+            for (const auto &conn : connections)
+            {
+                if (conn.toNode->getId() == path[i + 1])
+                {
+                    totalCost += conn.getCost();
+                    std::cout << conn.fromNode->getId() << " to " << conn.toNode->getId() << " (cost: " << conn.getCost() << "), ";
+                    break;
+                }
+            }
+        }
+        std::cout << "Total cost: " << totalCost << std::endl;
+    }
+    else
+    {
+        std::cout << "No path found." << std::endl;
+    }
+}
+
+
+
+
+int main()
+{
     // Create a graph
     Graph graph;
     graph.loadFromCSV("subset_airport_distances_revised.csv");
@@ -331,35 +367,23 @@ int main() {
 
     graph.generateDotFile("graph_dot_file.dot");
 
-    std::unordered_map<int, int> predecessors;
     int sourceNodeId = 1145501; // Example source node ID
-    ////graph.dijkstra(sourceNodeId, predecessors);
-    // To get and print the shortest path from source to another node, for example, node 4
     int targetNodeId = 1564301;
-    graph.aStar(sourceNodeId, targetNodeId, predecessors);
-
-    std::vector<int> path = graph.getShortestPath(sourceNodeId, targetNodeId, predecessors);
-    std::cout << "Shortest path from " << sourceNodeId << " to " << targetNodeId << ": ";
-    float totalCost = 0.0;
-    if (!path.empty()) {
-        for (size_t i = 0; i < path.size() - 1; ++i) {
-            auto connections = graph.getConnections(*graph.getNodeMap()[path[i]]);
-            for (const auto& conn : connections) {
-                if (conn.toNode->getId() == path[i + 1]) {
-                    totalCost += conn.getCost();
-                    std::cout << conn.fromNode->getId() << " to " << conn.toNode->getId() << " (cost: " << conn.getCost() << "), ";
-                    break;
-                }
-            }
-        }
-        std::cout << "Total cost: " << totalCost << std::endl;
-    } else {
-        std::cout << "No path found." << std::endl;
-    }
+    
+    std::unordered_map<int, int> predecessorsDijkstra;
+    graph.dijkstra(sourceNodeId, predecessorsDijkstra);
+    printGraphShortestPath(graph, sourceNodeId, targetNodeId, predecessorsDijkstra);
+    // To get and print the shortest path from source to another node, for example, node 4
+    
+    std::unordered_map<int, int> predecessorsAStar;
+    //graph.aStar(1, 5, predecessorsAStar);
+    graph.aStar(sourceNodeId, targetNodeId, predecessorsAStar);
+    printGraphShortestPath(graph, sourceNodeId, targetNodeId, predecessorsAStar);
 
     // The Graph destructor will delete the nodes
     return 0;
 }
+
 
 // Compile with: g++ -o main main.cpp
 // Run with: ./main
