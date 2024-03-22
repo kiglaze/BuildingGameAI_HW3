@@ -196,6 +196,17 @@ public:
         return it->first;
     }
 
+    // Function to find a node by its x and y coordinates
+    Node* findNodeByPosition(float x, float y) const {
+        for (Node* node : nodes) {
+            if (std::fabs(node->getX() - x) < std::numeric_limits<float>::epsilon() && 
+                std::fabs(node->getY() - y) < std::numeric_limits<float>::epsilon()) {
+                return node;
+            }
+        }
+        return nullptr; // Return nullptr if no matching node is found
+    }
+
     void loadFromNodesArr(const std::vector<sf::Vector2f>& nodePositions) {
         int unusedId = 1;
         if (!nodeMap.empty()) {
@@ -333,10 +344,16 @@ public:
         return distance;
     }
 
+    // Calculate the distance between two points on a 2D grid.
+    double calculateEuclideanDistance(double x1, double y1, double x2, double y2) {
+        return std::sqrt(std::pow(x2 - x1, 2) + std::pow(y2 - y1, 2));
+    }
+
     void fun2(void (*fun)(int, int), int someVal1, int someVal2) {
         fun(someVal1, someVal2);
     }
 
+    // Admissible heuristic for A*
     float aStarHeuristicLatLonDist(int id1, int id2) {
         auto nodeMap = getNodeMap(); // Assuming getNodeMap() returns std::unordered_map<int, Node*>
         
@@ -348,6 +365,7 @@ public:
         return calculateEarthDistance(node1->getY(), node1->getX(), node2->getY(), node2->getX());
     }
 
+    // Inadmissible heuristic for A*
     float aStarHeuristicEarthManhattanDist(int id1, int id2) {
         auto nodeMap = getNodeMap(); // Assuming getNodeMap() returns std::unordered_map<int, Node*>
         
@@ -373,6 +391,18 @@ public:
         return diffVaryingLats + diffVaryingLons;        
     }
 
+    // Heuristic is for the SFML portion, not the flight distance data.
+    float aStarHeuristicEuclideanDist(int id1, int id2) {
+        auto nodeMap = getNodeMap(); // Assuming getNodeMap() returns std::unordered_map<int, Node*>
+        
+        Node* node1 = nodeMap[id1];
+        Node* node2 = nodeMap[id2];
+        
+        if (node1 == nullptr || node2 == nullptr) return std::numeric_limits<float>::infinity();
+        
+        return calculateEuclideanDistance(node1->getX(), node1->getY(), node2->getX(), node2->getY());
+    }
+
     void aStarLatLonDist(int sourceId, int targetId, std::unordered_map<int, int>& predecessors) {
         // Here, 'this' is valid because we are in a non-static member function
         this->aStar(sourceId, targetId,
@@ -383,6 +413,12 @@ public:
         // Here, 'this' is valid because we are in a non-static member function
         this->aStar(sourceId, targetId,
                     [this](int id1, int id2) { return this->aStarHeuristicEarthManhattanDist(id1, id2); }, predecessors);
+    }
+
+    void aStarEuclideanDist(int sourceId, int targetId, std::unordered_map<int, int>& predecessors) {
+        // Here, 'this' is valid because we are in a non-static member function
+        this->aStar(sourceId, targetId,
+                    [this](int id1, int id2) { return this->aStarHeuristicEuclideanDist(id1, id2); }, predecessors);
     }
 
     // Functions for making it work with SFML.
@@ -450,7 +486,12 @@ void addWall(std::vector<sf::RectangleShape>& walls, const sf::Vector2f& size, c
 }
 
 int convertPixelToTileNum(float pixelDimensionVal, float tileSize) {
-    return (pixelDimensionVal - (tileSize / 2)) / tileSize;
+    //return (pixelDimensionVal - (tileSize / 2)) / tileSize;
+    return floor(pixelDimensionVal / tileSize);
+}
+
+float convertTileNumToPixel(int tileNum, float tileSize) {
+    return (float(tileNum) * tileSize) + (tileSize / 2);
 }
 
 
@@ -544,7 +585,7 @@ int main()
 
     for (int i = 0; i < maxTilesY; ++i) {
         for (int j = 0; j < maxTilesX; ++j) {
-            bool isInLowerLeftRoom = j > convertPixelToTileNum(50, tileSize) && j <= convertPixelToTileNum(360, tileSize) && i > convertPixelToTileNum(238, tileSize) &&  i <= convertPixelToTileNum(451, tileSize);
+            bool isInLowerLeftRoom = j >= convertPixelToTileNum(50, tileSize) && j <= convertPixelToTileNum(360, tileSize) && i > convertPixelToTileNum(238, tileSize) &&  i < convertPixelToTileNum(451, tileSize);
             bool isInUpperRoom = j > convertPixelToTileNum(131, tileSize) && j <= convertPixelToTileNum(568, tileSize) && i > convertPixelToTileNum(45, tileSize) &&  i <= convertPixelToTileNum(225, tileSize);
             bool isInLowerRightRoom = j > convertPixelToTileNum(374, tileSize) && j <= convertPixelToTileNum(625, tileSize) && i > convertPixelToTileNum(238, tileSize) &&  i <= convertPixelToTileNum(451, tileSize);
 
@@ -568,7 +609,7 @@ int main()
     // Populate the vector with green dots
     for (const auto& pos : positions)
     {
-        sf::CircleShape dot(5); // Dot with radius 5
+        sf::CircleShape dot(1); // Dot with radius 5
         dot.setFillColor(sf::Color::Green);
         dot.setPosition(pos);
         greenDots.push_back(dot);
@@ -609,6 +650,7 @@ int main()
     steeringCollection.addSprite(spriteB);
 
     Kinematic* kinemMouseClickObj = nullptr;
+    Node* nodeNearClick = nullptr;
     
     while (window.isOpen())
     {
@@ -634,7 +676,8 @@ int main()
             sf::Vector2i mousePos = sf::Mouse::getPosition(window);
 
             // Optional: Display the mouse position in the console
-            std::cout << "Mouse position: " << mousePos.x << ", " << mousePos.y << std::endl;
+            std::cout << "\rMouse position: " << mousePos.x << ", " << mousePos.y << "      "<< std::flush;
+            std::cout << "\rMouse tile position: " << convertPixelToTileNum(mousePos.x, tileSize) << ", " << convertPixelToTileNum(mousePos.y, tileSize) << "      "<< std::flush;
             std::flush(std::cout); // Flush to update the position in the console in real-time
 
             sf::Time elapsed = clock.restart();
@@ -655,13 +698,24 @@ int main()
             // Activated by pressing "V" to have sprite velocity match the mouse.
             if (sf::Mouse::isButtonPressed(sf::Mouse::Left)) {
                 sf::Vector2i localPosition = sf::Mouse::getPosition(window);
+                float localPositionX = float(localPosition.x);
+                float localPositionY = float(localPosition.y);
+                
                 // If left mouse click, arrive and align to that spot.
 
                 if (kinemMouseClickObj != nullptr) {
                     delete kinemMouseClickObj;
                     kinemMouseClickObj = nullptr;
                 }
-                kinemMouseClickObj = new Kinematic(sf::Vector2f(localPosition.x, localPosition.y), 0, sf::Vector2f(0, 0), 0);
+
+                int tileNumX = convertPixelToTileNum(localPositionX, tileSize);
+                int tileNumY = convertPixelToTileNum(localPositionY, tileSize);
+                std::cout << "TILE NUMS OF CLICK: " << tileNumX << ", " << tileNumY << std::endl;
+                kinemMouseClickObj = new Kinematic(sf::Vector2f(convertTileNumToPixel(tileNumX, tileSize), convertTileNumToPixel(tileNumY, tileSize)), 0, sf::Vector2f(0, 0), 0);
+                sf::Vector2f kinemMouseClickObjPos = kinemMouseClickObj->getPosition();
+                std::cout << "MOUSE CLICK TILE DOT: " << kinemMouseClickObjPos.x << ", " << kinemMouseClickObjPos.y << std::endl;
+
+                nodeNearClick = gameGraph.findNodeByPosition(kinemMouseClickObjPos.x, kinemMouseClickObjPos.y);
             }
 
             if (timeDelta > 0) {

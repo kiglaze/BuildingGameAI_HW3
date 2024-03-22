@@ -35,7 +35,7 @@ public:
 protected:
     Kinematic* target;
     Sprite* character;
-    float targetRadius = 15;
+    float targetRadius = 10;
 
     float maxAngularAcceleration = .01;
     float maxRotation = 0.1;

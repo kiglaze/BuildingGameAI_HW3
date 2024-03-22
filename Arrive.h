@@ -32,7 +32,7 @@ protected:
 private:
     // Private member variables
     float maxSpeed = 0.1;
-    float targetRadius = 50;
+    float targetRadius = 20;
     float slowRadius = 60;
     float maxAcceleration = 0.002;
     float timeToTarget = 1.0;
