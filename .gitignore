@@ -1,2 +1,6 @@
 main
+*.o
+sfml-app
 .vscode
+temp/
+graph_dot_file.png
