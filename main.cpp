@@ -112,6 +112,14 @@ public:
         connections.emplace_back(from, to, cost);
     }
 
+    size_t countConnections() const {
+        return connections.size();
+    }
+
+    size_t countNodes() const {
+        return nodes.size();
+    }
+
     // Function to get a list of all connections outgoing from the given node.
     std::vector<Connection> getConnections(const Node& fromNode) const {
         std::vector<Connection> result;
@@ -207,11 +215,13 @@ public:
         return nullptr; // Return nullptr if no matching node is found
     }
 
-    void loadFromNodesArr(const std::vector<sf::Vector2f>& nodePositions) {
+    // 
+    void loadFromNodesArr(const std::vector<sf::Vector2f>& nodePositions, int startingIdOffset = 0) {
         int unusedId = 1;
         if (!nodeMap.empty()) {
             unusedId = getLargestIdInNodeMap() + 1;
         }
+        unusedId = unusedId + startingIdOffset;
 
         for (const auto& nodePosition : nodePositions) {
             std::cout << nodePosition.x << ", " << nodePosition.y << std::endl;
@@ -443,6 +453,42 @@ public:
         }
     }
 
+    // Merge another graph into this one
+    void mergeGraph(const Graph& other) {
+        int unusedId = 1;
+        if (!nodeMap.empty()) {
+            unusedId = getLargestIdInNodeMap() + 1;
+        }
+        // Iterate over all nodes in the other graph
+        for (const Node* otherNode : other.nodes) {
+            // Check if the node already exists in this graph
+            Node* copiedNode = new Node(unusedId++, otherNode->getX(), otherNode->getY()); // Assumes Node has a copy constructor
+            this->addNode(copiedNode);
+            // If the node already exists, no need to add it again
+        }
+
+        // Iterate over all connections in the other graph
+        for (const Connection& otherConnection : other.connections) {
+            Node* fromNode = this->nodeMap[otherConnection.fromNode->getId()];
+            Node* toNode = this->nodeMap[otherConnection.toNode->getId()];
+
+            // Add connection if it doesn't already exist
+            // This naive implementation adds the connection directly.
+            // You may want to check for existing connections between these nodes to avoid duplicates.
+            this->addConnection(fromNode, toNode, otherConnection.cost);
+        }
+    }
+
+    void addConnection2DByCoordinates(float x1, float y1, float x2, float y2) {
+        Node* n1 = findNodeByPosition(x1, y1);
+        Node* n2 = findNodeByPosition(x2, y2);
+        if(n1 != nullptr && n2 != nullptr) {
+            float weightDistance = calculateEuclideanDistance(x1, y1, x2, y2);
+            addConnection(n1, n2, weightDistance);
+            addConnection(n2, n1, weightDistance);
+        }
+    }
+
 };
 
 void printGraphShortestPath(Graph &graph, int sourceNodeId, int targetNodeId, std::unordered_map<int, int> &predecessors)
@@ -587,6 +633,8 @@ int main()
     std::vector<sf::Vector2f> positions = {};
 /*         {100, 100}, {200, 200}, {300, 300}, {400, 400}, {500, 500}
     }; */
+    std::vector<sf::Vector2f> positionsBottomLeft = {};
+    std::vector<sf::Vector2f> positionsBottomRight = {};
 
     for (int i = 0; i < maxTilesY; ++i) {
         for (int j = 0; j < maxTilesX; ++j) {
@@ -594,15 +642,37 @@ int main()
             bool isInUpperRoom = j > convertPixelToTileNum(131, tileSize) && j <= convertPixelToTileNum(568, tileSize) && i > convertPixelToTileNum(45, tileSize) &&  i <= convertPixelToTileNum(225, tileSize);
             bool isInLowerRightRoom = j > convertPixelToTileNum(374, tileSize) && j <= convertPixelToTileNum(625, tileSize) && i > convertPixelToTileNum(238, tileSize) &&  i <= convertPixelToTileNum(451, tileSize);
 
+            //sf::Vector2f dotPosVect = sf::Vector2f((j * tileSize) + (tileSize / 2), (i * tileSize) + (tileSize / 2));
+            sf::Vector2f dotPosVect = sf::Vector2f(convertTileNumToPixel(j, tileSize), convertTileNumToPixel(i, tileSize));
             if (isInLowerLeftRoom) {
-                positions.push_back(sf::Vector2f((j * tileSize) + (tileSize / 2), (i * tileSize) + (tileSize / 2)));
+                
+                positions.push_back(dotPosVect);
+                positionsBottomLeft.push_back(dotPosVect);
+            }
+            if (isInLowerRightRoom) {
+                positions.push_back(dotPosVect);
+                positionsBottomRight.push_back(dotPosVect);
             }
         }
     }
 
     Graph gameGraph;
-    gameGraph.loadFromNodesArr(positions);
+    gameGraph.loadFromNodesArr(positionsBottomLeft);
     gameGraph.connectAllNodes();
+    int largestIdGameGraph = gameGraph.getLargestIdInNodeMap();
+    size_t numConnections1 = gameGraph.countConnections();
+    size_t numNodes1 = gameGraph.countNodes();
+
+    Graph gameSubGraphBottomRight;
+    gameSubGraphBottomRight.loadFromNodesArr(positionsBottomRight, largestIdGameGraph);
+    gameSubGraphBottomRight.connectAllNodes();
+    size_t numConnections2 = gameSubGraphBottomRight.countConnections();
+    size_t numNodes2 = gameSubGraphBottomRight.countNodes();
+
+    gameGraph.mergeGraph(gameSubGraphBottomRight);
+    size_t numConnections3 = gameGraph.countConnections();
+    size_t numNodes3 = gameGraph.countNodes();
+    gameGraph.addConnection2DByCoordinates(380, 340, 420, 340);
 
 /*     for (int j = 0; j < maxTilesY; ++j) {
         positions.push_back(sf::Vector2f((j * tileSize) + (tileSize / 2), (tileSize / 2)));
@@ -681,7 +751,7 @@ int main()
             sf::Vector2i mousePos = sf::Mouse::getPosition(window);
 
             // Optional: Display the mouse position in the console
-            //std::cout << "\rMouse position: " << mousePos.x << ", " << mousePos.y << "      "<< std::flush;
+            std::cout << "\rMouse position: " << mousePos.x << ", " << mousePos.y << "      "<< std::flush;
             //std::cout << "\rMouse tile position: " << convertPixelToTileNum(mousePos.x, tileSize) << ", " << convertPixelToTileNum(mousePos.y, tileSize) << "      "<< std::flush;
             //std::flush(std::cout); // Flush to update the position in the console in real-time
 
