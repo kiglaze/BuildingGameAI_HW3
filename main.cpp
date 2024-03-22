@@ -9,6 +9,7 @@
 #include <queue>
 #include <algorithm>
 #include <cmath>
+#include <typeinfo>
 
 #include <SFML/Graphics.hpp>
 #include <memory>
@@ -185,6 +186,29 @@ public:
         }
     }
 
+    // Gets the largest id of nodes that exist in the node map of this graph.
+    int getLargestIdInNodeMap() {
+        // Code line obtained from ChatGPT.
+        auto it = std::max_element(nodeMap.begin(), nodeMap.end(),
+                            [](const auto& a, const auto& b) {
+                                return a.first < b.first;
+                            });
+        return it->first;
+    }
+
+    void loadFromNodesArr(const std::vector<sf::Vector2f>& nodePositions) {
+        int unusedId = 1;
+        if (!nodeMap.empty()) {
+            unusedId = getLargestIdInNodeMap() + 1;
+        }
+
+        for (const auto& nodePosition : nodePositions) {
+            std::cout << nodePosition.x << ", " << nodePosition.y << std::endl;
+
+            Node* additionalNode = new Node(unusedId++, nodePosition.x, nodePosition.y);
+            addNode(additionalNode);
+        }
+    }
 
     void dijkstra(int sourceId, std::unordered_map<int, int>& predecessors) {
         std::unordered_map<int, float> distances;
@@ -471,7 +495,7 @@ int main()
 
 
     // Pasting in code from HW2
-        sf::Clock clock;
+    sf::Clock clock;
     float maxWindowX = 640.0;
     // Window height is 3/4 of width.
     float maxWindowY = 480.0;
@@ -524,11 +548,16 @@ int main()
             bool isInUpperRoom = j > convertPixelToTileNum(131, tileSize) && j <= convertPixelToTileNum(568, tileSize) && i > convertPixelToTileNum(45, tileSize) &&  i <= convertPixelToTileNum(225, tileSize);
             bool isInLowerRightRoom = j > convertPixelToTileNum(374, tileSize) && j <= convertPixelToTileNum(625, tileSize) && i > convertPixelToTileNum(238, tileSize) &&  i <= convertPixelToTileNum(451, tileSize);
 
-            if (isInLowerLeftRoom || isInUpperRoom || isInLowerRightRoom) {
+            if (isInLowerLeftRoom) {
                 positions.push_back(sf::Vector2f((j * tileSize) + (tileSize / 2), (i * tileSize) + (tileSize / 2)));
             }
         }
     }
+
+    Graph gameGraph;
+    gameGraph.loadFromNodesArr(positions);
+    gameGraph.connectAllNodes();
+
 /*     for (int j = 0; j < maxTilesY; ++j) {
         positions.push_back(sf::Vector2f((j * tileSize) + (tileSize / 2), (tileSize / 2)));
     } */
