@@ -430,18 +430,18 @@ public:
     }
     // Make a graph with only nodes and no edges be fully connected, given the existing nodes.
     void connectAllNodes() {
-    // Loop through all pairs of nodes
-    for (size_t i = 0; i < nodes.size(); ++i) {
-        for (size_t j = i + 1; j < nodes.size(); ++j) {
-            // Calculate the distance between nodes[i] and nodes[j]
-            float distance = calculateDistanceBetweenNodes(nodes[i], nodes[j]);
+        // Loop through all pairs of nodes
+        for (size_t i = 0; i < nodes.size(); ++i) {
+            for (size_t j = i + 1; j < nodes.size(); ++j) {
+                // Calculate the distance between nodes[i] and nodes[j]
+                float distance = calculateDistanceBetweenNodes(nodes[i], nodes[j]);
 
-            // Add connection between nodes[i] and nodes[j] in both directions with the calculated distance as the cost
-            addConnection(nodes[i], nodes[j], distance);
-            addConnection(nodes[j], nodes[i], distance);
+                // Add connection between nodes[i] and nodes[j] in both directions with the calculated distance as the cost
+                addConnection(nodes[i], nodes[j], distance);
+                addConnection(nodes[j], nodes[i], distance);
+            }
         }
     }
-}
 
 };
 
@@ -494,6 +494,11 @@ float convertTileNumToPixel(int tileNum, float tileSize) {
     return (float(tileNum) * tileSize) + (tileSize / 2);
 }
 
+// Convert the pixel (in either x or y direction) to the nearest tile dot pixel.
+float convertPixelDimToTileDotDim(float pixelDim, float tileSize) {
+    return convertTileNumToPixel(convertPixelToTileNum(pixelDim, tileSize), tileSize);
+}
+
 
 int main()
 {
@@ -520,8 +525,8 @@ int main()
     int targetNodeId = 1564301;
 
     //graph.fun2(printIt1, sourceNodeId, targetNodeId);
-    
-    std::unordered_map<int, int> predecessorsDijkstra;
+    //UNCOMMENT
+/*     std::unordered_map<int, int> predecessorsDijkstra;
     graph.dijkstra(sourceNodeId, predecessorsDijkstra);
     printGraphShortestPath(graph, sourceNodeId, targetNodeId, predecessorsDijkstra);
     
@@ -531,7 +536,7 @@ int main()
 
     std::unordered_map<int, int> predecessorsAStarManhattan;
     graph.aStarEarthManhattanDist(sourceNodeId, targetNodeId, predecessorsAStarManhattan);
-    printGraphShortestPath(graph, sourceNodeId, targetNodeId, predecessorsAStarManhattan);
+    printGraphShortestPath(graph, sourceNodeId, targetNodeId, predecessorsAStarManhattan); */
 
 
 
@@ -676,9 +681,9 @@ int main()
             sf::Vector2i mousePos = sf::Mouse::getPosition(window);
 
             // Optional: Display the mouse position in the console
-            std::cout << "\rMouse position: " << mousePos.x << ", " << mousePos.y << "      "<< std::flush;
-            std::cout << "\rMouse tile position: " << convertPixelToTileNum(mousePos.x, tileSize) << ", " << convertPixelToTileNum(mousePos.y, tileSize) << "      "<< std::flush;
-            std::flush(std::cout); // Flush to update the position in the console in real-time
+            //std::cout << "\rMouse position: " << mousePos.x << ", " << mousePos.y << "      "<< std::flush;
+            //std::cout << "\rMouse tile position: " << convertPixelToTileNum(mousePos.x, tileSize) << ", " << convertPixelToTileNum(mousePos.y, tileSize) << "      "<< std::flush;
+            //std::flush(std::cout); // Flush to update the position in the console in real-time
 
             sf::Time elapsed = clock.restart();
             float timeDelta = elapsed.asMilliseconds();
@@ -710,16 +715,36 @@ int main()
 
                 int tileNumX = convertPixelToTileNum(localPositionX, tileSize);
                 int tileNumY = convertPixelToTileNum(localPositionY, tileSize);
-                std::cout << "TILE NUMS OF CLICK: " << tileNumX << ", " << tileNumY << std::endl;
-                kinemMouseClickObj = new Kinematic(sf::Vector2f(convertTileNumToPixel(tileNumX, tileSize), convertTileNumToPixel(tileNumY, tileSize)), 0, sf::Vector2f(0, 0), 0);
+                //std::cout << "TILE NUMS OF CLICK: " << tileNumX << ", " << tileNumY << std::endl;
+                // Gets location of grid tile dot closest to the mouse click.
+                kinemMouseClickObj = new Kinematic(sf::Vector2f(convertPixelDimToTileDotDim(localPositionX, tileSize), convertPixelDimToTileDotDim(localPositionY, tileSize)), 0, sf::Vector2f(0, 0), 0);
                 sf::Vector2f kinemMouseClickObjPos = kinemMouseClickObj->getPosition();
-                std::cout << "MOUSE CLICK TILE DOT: " << kinemMouseClickObjPos.x << ", " << kinemMouseClickObjPos.y << std::endl;
+                //std::cout << "MOUSE CLICK TILE DOT: " << kinemMouseClickObjPos.x << ", " << kinemMouseClickObjPos.y << std::endl;
 
                 nodeNearClick = gameGraph.findNodeByPosition(kinemMouseClickObjPos.x, kinemMouseClickObjPos.y);
+
+                if (nodeNearClick != nullptr) {
+                    sf::Vector2f spriteBPos = spriteB->getPosition();
+                    sf::Vector2f startingTileDot = sf::Vector2f(convertPixelDimToTileDotDim(spriteBPos.x, tileSize), convertPixelDimToTileDotDim(spriteBPos.y, tileSize));
+                    Node* nodeNearStart = gameGraph.findNodeByPosition(startingTileDot.x, startingTileDot.y);
+                    //TODO!
+                    // Printing shortest path of sprite to click using A* with Euclidean distance.
+                    std::unordered_map<int, int> predecessorsAStarEuclidean;
+                    int startNodeId = nodeNearStart->getId();
+                    int goalNodeId = nodeNearClick->getId();
+                    gameGraph.aStarEuclideanDist(startNodeId, goalNodeId, predecessorsAStarEuclidean);
+                    printGraphShortestPath(gameGraph, startNodeId, goalNodeId, predecessorsAStarEuclidean);
+                } else {
+                    if (kinemMouseClickObj != nullptr) {
+                        delete kinemMouseClickObj;
+                        kinemMouseClickObj = nullptr; // To prevent dangling pointers
+                    }
+                }
+
             }
 
             if (timeDelta > 0) {
-
+                
                 if (kinemMouseClickObj != nullptr) {
                     Arrive arriveBehavior(kinemMouseClickObj, spriteB);
                     arriveBehavior.execute(timeDelta);
