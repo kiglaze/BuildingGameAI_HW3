@@ -98,55 +98,18 @@ public:
         return nodeMap;
     }
 
-    void aStar(int sourceId, int targetId, std::function<float(int, int)> heuristicFun, std::unordered_map<int, int>& predecessors) {
-        std::unordered_map<int, float> gScore, fScore;
-        auto nodeMap = getNodeMap(); // Assume this exists and is populated elsewhere
-
-        auto comp = [&fScore](int lhs, int rhs) {
-            return fScore[lhs] > fScore[rhs];
-        };
-        std::priority_queue<int, std::vector<int>, decltype(comp)> openSet(comp);
-
-        for (const auto& pair : nodeMap) {
-            int nodeId = pair.first;
-            gScore[nodeId] = std::numeric_limits<float>::infinity();
-            fScore[nodeId] = std::numeric_limits<float>::infinity();
-            predecessors[nodeId] = -1; // Use -1 to indicate no predecessor
+    // Add a node to the graph
+    void addNode(Node* node) {
+        if (nodeMap.find(node->getId()) == nodeMap.end()) {
+            nodes.push_back(node);
+            nodeMap[node->getId()] = node;
         }
-        gScore[sourceId] = 0.0f;
-        fScore[sourceId] = heuristicFun(sourceId, targetId);
-
-        openSet.push(sourceId);
-
-        std::unordered_set<int> openSetItems {sourceId};
-
-        while (!openSet.empty()) {
-            int currentNodeId = openSet.top();
-            openSet.pop();
-            openSetItems.erase(currentNodeId);
-
-            if (currentNodeId == targetId) break;
-
-            for (const auto& conn : getConnections(*nodeMap[currentNodeId])) {
-                int neighborId = conn.toNode->getId();
-                float tentative_gScore = gScore[currentNodeId] + conn.cost;
-
-                if (tentative_gScore < gScore[neighborId]) {
-                    predecessors[neighborId] = currentNodeId;
-                    gScore[neighborId] = tentative_gScore;
-                    fScore[neighborId] = gScore[neighborId] + heuristicFun(neighborId, targetId);
-
-                    if (openSetItems.insert(neighborId).second) {
-                        openSet.push(neighborId);
-                    }
-                }
-            }
-        }
-
-        // Distances and predecessors are now populated
-        // Further processing can be done outside this function
     }
 
+    // Add a connection to the graph
+    void addConnection(Node* from, Node* to, float cost) {
+        connections.emplace_back(from, to, cost);
+    }
 
     // Function to get a list of all connections outgoing from the given node.
     std::vector<Connection> getConnections(const Node& fromNode) const {
@@ -157,19 +120,6 @@ public:
             }
         }
         return result;
-    }
-
-    // Add a connection to the graph
-    void addConnection(Node* from, Node* to, float cost) {
-        connections.emplace_back(from, to, cost);
-    }
-
-    // Add a node to the graph
-    void addNode(Node* node) {
-        if (nodeMap.find(node->getId()) == nodeMap.end()) {
-            nodes.push_back(node);
-            nodeMap[node->getId()] = node;
-        }
     }
 
     void printGraph() const {
@@ -273,6 +223,56 @@ public:
         // You can use the predecessors map to reconstruct the shortest path
     }
 
+    void aStar(int sourceId, int targetId, std::function<float(int, int)> heuristicFun, std::unordered_map<int, int>& predecessors) {
+        std::unordered_map<int, float> gScore, fScore;
+        auto nodeMap = getNodeMap(); // Assume this exists and is populated elsewhere
+
+        auto comp = [&fScore](int lhs, int rhs) {
+            return fScore[lhs] > fScore[rhs];
+        };
+        std::priority_queue<int, std::vector<int>, decltype(comp)> openSet(comp);
+
+        for (const auto& pair : nodeMap) {
+            int nodeId = pair.first;
+            gScore[nodeId] = std::numeric_limits<float>::infinity();
+            fScore[nodeId] = std::numeric_limits<float>::infinity();
+            predecessors[nodeId] = -1; // Use -1 to indicate no predecessor
+        }
+        gScore[sourceId] = 0.0f;
+        fScore[sourceId] = heuristicFun(sourceId, targetId);
+
+        openSet.push(sourceId);
+
+        std::unordered_set<int> openSetItems {sourceId};
+
+        while (!openSet.empty()) {
+            int currentNodeId = openSet.top();
+            openSet.pop();
+            openSetItems.erase(currentNodeId);
+
+            if (currentNodeId == targetId) break;
+
+            for (const auto& conn : getConnections(*nodeMap[currentNodeId])) {
+                int neighborId = conn.toNode->getId();
+                float tentative_gScore = gScore[currentNodeId] + conn.cost;
+
+                if (tentative_gScore < gScore[neighborId]) {
+                    predecessors[neighborId] = currentNodeId;
+                    gScore[neighborId] = tentative_gScore;
+                    fScore[neighborId] = gScore[neighborId] + heuristicFun(neighborId, targetId);
+
+                    if (openSetItems.insert(neighborId).second) {
+                        openSet.push(neighborId);
+                    }
+                }
+            }
+        }
+
+        // Distances and predecessors are now populated
+        // Further processing can be done outside this function
+    }
+
+
     // Function to reconstruct the shortest path from source to target
     std::vector<int> getShortestPath(int sourceId, int targetId, const std::unordered_map<int, int>& predecessors) {
         std::vector<int> path;
@@ -360,6 +360,28 @@ public:
         this->aStar(sourceId, targetId,
                     [this](int id1, int id2) { return this->aStarHeuristicEarthManhattanDist(id1, id2); }, predecessors);
     }
+
+    // Functions for making it work with SFML.
+    // Function to calculate Euclidean distance between two nodes
+    float calculateDistanceBetweenNodes(const Node* a, const Node* b) {
+        float dx = a->getX() - b->getX();
+        float dy = a->getY() - b->getY();
+        return sqrt(dx * dx + dy * dy);
+    }
+    // Make a graph with only nodes and no edges be fully connected, given the existing nodes.
+    void connectAllNodes() {
+    // Loop through all pairs of nodes
+    for (size_t i = 0; i < nodes.size(); ++i) {
+        for (size_t j = i + 1; j < nodes.size(); ++j) {
+            // Calculate the distance between nodes[i] and nodes[j]
+            float distance = calculateDistanceBetweenNodes(nodes[i], nodes[j]);
+
+            // Add connection between nodes[i] and nodes[j] in both directions with the calculated distance as the cost
+            addConnection(nodes[i], nodes[j], distance);
+            addConnection(nodes[j], nodes[i], distance);
+        }
+    }
+}
 
 };
 
