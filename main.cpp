@@ -635,14 +635,16 @@ int main()
     }; */
     std::vector<sf::Vector2f> positionsBottomLeft = {};
     std::vector<sf::Vector2f> positionsBottomRight = {};
+    std::vector<sf::Vector2f> positionsTopRoom = {};
 
     for (int i = 0; i < maxTilesY; ++i) {
         for (int j = 0; j < maxTilesX; ++j) {
             bool isInLowerLeftRoom = j >= convertPixelToTileNum(50, tileSize) && j <= convertPixelToTileNum(360, tileSize) && i > convertPixelToTileNum(238, tileSize) &&  i < convertPixelToTileNum(451, tileSize);
-            bool isInUpperRoom = j > convertPixelToTileNum(131, tileSize) && j <= convertPixelToTileNum(568, tileSize) && i > convertPixelToTileNum(45, tileSize) &&  i <= convertPixelToTileNum(225, tileSize);
             bool isInLowerRightRoom = j > convertPixelToTileNum(374, tileSize) && j <= convertPixelToTileNum(625, tileSize) && i > convertPixelToTileNum(238, tileSize) &&  i < convertPixelToTileNum(451, tileSize);
+            bool isInUpperRoom = j >= convertPixelToTileNum(131, tileSize) && j < convertPixelToTileNum(568, tileSize) && i >= convertPixelToTileNum(45, tileSize) &&  i <= convertPixelToTileNum(225, tileSize);
 
             //sf::Vector2f dotPosVect = sf::Vector2f((j * tileSize) + (tileSize / 2), (i * tileSize) + (tileSize / 2));
+            
             sf::Vector2f dotPosVect = sf::Vector2f(convertTileNumToPixel(j, tileSize), convertTileNumToPixel(i, tileSize));
             if (isInLowerLeftRoom) {
                 
@@ -653,8 +655,13 @@ int main()
                 positions.push_back(dotPosVect);
                 positionsBottomRight.push_back(dotPosVect);
             }
+            if(isInUpperRoom) {
+                positions.push_back(dotPosVect);
+                positionsTopRoom.push_back(dotPosVect);
+            }
         }
     }
+
 
     Graph gameGraph;
     gameGraph.loadFromNodesArr(positionsBottomLeft);
@@ -674,12 +681,18 @@ int main()
     size_t numNodes3 = gameGraph.countNodes();
     gameGraph.addConnection2DByCoordinates(380, 340, 420, 340);
 
-/*     for (int j = 0; j < maxTilesY; ++j) {
-        positions.push_back(sf::Vector2f((j * tileSize) + (tileSize / 2), (tileSize / 2)));
-    } */
+    Graph gameSubGraphTopRoom;
+    largestIdGameGraph = gameGraph.getLargestIdInNodeMap();
+    gameSubGraphTopRoom.loadFromNodesArr(positionsTopRoom, largestIdGameGraph);
+    gameSubGraphTopRoom.connectAllNodes();
+    size_t numConnections4 = gameSubGraphTopRoom.countConnections();
+    size_t numNodes4 = gameSubGraphTopRoom.countNodes();
 
-    // for i in 1, maxTilesX
-        // push this to positions: { (tileSize/2), ((i * tileSize) - (tileSize / 2)) }
+    gameGraph.mergeGraph(gameSubGraphTopRoom);
+    gameGraph.addConnection2DByCoordinates(260, 180, 260, 260);
+    gameGraph.addConnection2DByCoordinates(500, 180, 500, 260);
+    size_t numConnections5 = gameGraph.countConnections();
+    size_t numNodes5 = gameGraph.countNodes();
 
     // Populate the vector with green dots
     for (const auto& pos : positions)
@@ -799,30 +812,35 @@ int main()
 
                 nodeNearClick = gameGraph.findNodeByPosition(kinemMouseClickObjPos.x, kinemMouseClickObjPos.y);
 
-                if (nodeNearClick != nullptr && currentArriveGoalNodeId == nullptr) {
-                    sf::Vector2f spriteBPos = spriteB->getPosition();
-                    sf::Vector2f startingTileDot = sf::Vector2f(convertPixelDimToTileDotDim(spriteBPos.x, tileSize), convertPixelDimToTileDotDim(spriteBPos.y, tileSize));
-                    Node* nodeNearStart = gameGraph.findNodeByPosition(startingTileDot.x, startingTileDot.y);
-                    //TODO!
-                    // Printing shortest path of sprite to click using A* with Euclidean distance.
-                    std::unordered_map<int, int> predecessorsAStarEuclidean;
-                    int startNodeId = nodeNearStart->getId();
-                    int goalNodeId = nodeNearClick->getId();
-                    gameGraph.aStarEuclideanDist(startNodeId, goalNodeId, predecessorsAStarEuclidean);
-                    //printGraphShortestPath(gameGraph, startNodeId, goalNodeId, predecessorsAStarEuclidean);
-                    gameNodeIdPath = gameGraph.getShortestPath(startNodeId, goalNodeId, predecessorsAStarEuclidean);
+                if (nodeNearClick != nullptr) {
+                    if(currentArriveGoalNodeId == nullptr) {
+                        sf::Vector2f spriteBPos = spriteB->getPosition();
+                        sf::Vector2f startingTileDot = sf::Vector2f(convertPixelDimToTileDotDim(spriteBPos.x, tileSize), convertPixelDimToTileDotDim(spriteBPos.y, tileSize));
+                        Node* nodeNearStart = gameGraph.findNodeByPosition(startingTileDot.x, startingTileDot.y);
+                        //TODO!
+                        // Printing shortest path of sprite to click using A* with Euclidean distance.
+                        std::unordered_map<int, int> predecessorsAStarEuclidean;
+                        int startNodeId = nodeNearStart->getId();
+                        int goalNodeId = nodeNearClick->getId();
+                        gameGraph.aStarEuclideanDist(startNodeId, goalNodeId, predecessorsAStarEuclidean);
+                        //printGraphShortestPath(gameGraph, startNodeId, goalNodeId, predecessorsAStarEuclidean);
+                        gameNodeIdPath = gameGraph.getShortestPath(startNodeId, goalNodeId, predecessorsAStarEuclidean);
 
-                    currentArriveGoalNodeId = gameNodeIdPath.data();
-                    gameNodeIdPathEnd = gameNodeIdPath.data() + gameNodeIdPath.size() - 1;
+                        currentArriveGoalNodeId = gameNodeIdPath.data();
+                        gameNodeIdPathEnd = gameNodeIdPath.data() + gameNodeIdPath.size() - 1;
 
 
-                    currentArriveGoalNode = gameGraphNodeMap[*currentArriveGoalNodeId];
-                    kinemArriveGoalObj = new Kinematic(sf::Vector2f(currentArriveGoalNode->getX(), currentArriveGoalNode->getY()), 0, sf::Vector2f(0, 0), 0);
-                    if (currentArriveGoalNode != nullptr) {
-                        delete currentArriveGoalNode;
-                        currentArriveGoalNode = nullptr; // To prevent dangling pointers
+                        currentArriveGoalNode = gameGraphNodeMap[*currentArriveGoalNodeId];
+                        if (kinemArriveGoalObj != nullptr) {
+                            delete kinemArriveGoalObj;
+                            kinemArriveGoalObj = nullptr; // To prevent dangling pointers
+                        }
+                        kinemArriveGoalObj = new Kinematic(sf::Vector2f(currentArriveGoalNode->getX(), currentArriveGoalNode->getY()), 0, sf::Vector2f(0, 0), 0);
+    /*                     if (currentArriveGoalNode != nullptr) {
+                            delete currentArriveGoalNode;
+                            currentArriveGoalNode = nullptr; // To prevent dangling pointers
+                        } */
                     }
-
 
 
 
@@ -849,7 +867,7 @@ int main()
                     spriteB->dropSomeCrumbs();
                 
                     // Need to only do this once currentArriveGoalNode is reached by spriteB.
-                    if(spriteB->hasArrivedAtKinemObj(kinemArriveGoalObj, 40)) {
+                    if(spriteB->hasArrivedAtKinemObj(kinemArriveGoalObj, 30)) {
                         if(currentArriveGoalNodeId != gameNodeIdPathEnd) {
                             currentArriveGoalNodeId++;
                             currentArriveGoalNode = gameGraphNodeMap[*currentArriveGoalNodeId];
