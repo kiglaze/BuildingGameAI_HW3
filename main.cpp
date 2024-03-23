@@ -664,8 +664,8 @@ int main()
             bool isInLowerLeftRoom = j >= convertPixelToTileNum(50, tileSize) && j <= convertPixelToTileNum(360, tileSize) && i > convertPixelToTileNum(238, tileSize) &&  i < convertPixelToTileNum(451, tileSize);
             bool isInLowerRightRoom = j > convertPixelToTileNum(374, tileSize) && j <= convertPixelToTileNum(625, tileSize) && i > convertPixelToTileNum(238, tileSize) &&  i < convertPixelToTileNum(451, tileSize);
             bool isInUpperRoom = j >= convertPixelToTileNum(131, tileSize) && j < convertPixelToTileNum(568, tileSize) && i >= convertPixelToTileNum(45, tileSize) &&  i <= convertPixelToTileNum(225, tileSize);
-            bool isInTopRoomA = isInUpperRoom;
-            bool isInTopRoomB = isInUpperRoom;
+            bool isInTopRoomA = isInUpperRoom && j < convertPixelToTileNum(300, tileSize);
+            bool isInTopRoomB = isInUpperRoom && j >= convertPixelToTileNum(300, tileSize) && i > convertPixelToTileNum(140, tileSize);
             bool isInTopRoomC = isInUpperRoom;
 
             //sf::Vector2f dotPosVect = sf::Vector2f((j * tileSize) + (tileSize / 2), (i * tileSize) + (tileSize / 2));
@@ -679,18 +679,20 @@ int main()
                 positions.push_back(dotPosVect);
                 positionsBottomRight.push_back(dotPosVect);
             }
-            if(isInUpperRoom) {
+/*             if(isInUpperRoom) {
                 positions.push_back(dotPosVect);
                 positionsTopRoom.push_back(dotPosVect);
-            }
-/*             if(isInTopRoomA) {
+            } */
+            if(isInTopRoomA) {
                 positions.push_back(dotPosVect);
                 positionsTopRoomA.push_back(dotPosVect);
             }
+            
             if(isInTopRoomB) {
                 positions.push_back(dotPosVect);
                 positionsTopRoomB.push_back(dotPosVect);
             }
+            /*
             if(isInTopRoomC) {
                 positions.push_back(dotPosVect);
                 positionsTopRoomC.push_back(dotPosVect);
@@ -707,14 +709,17 @@ int main()
 
     gameGraph.addConnection2DByCoordinates(380, 340, 420, 340);
 
-    gameGraph.performGraphAppend(positionsTopRoom);
+    //gameGraph.performGraphAppend(positionsTopRoom);
+
+    gameGraph.performGraphAppend(positionsTopRoomA);
+    gameGraph.performGraphAppend(positionsTopRoomB);
+    //gameGraph.performGraphAppend(positionsTopRoomC);
 
     gameGraph.addConnection2DByCoordinates(260, 180, 260, 260);
     gameGraph.addConnection2DByCoordinates(500, 180, 500, 260);
-
-    //gameGraph.performGraphAppend(positionsTopRoomA);
-    //gameGraph.performGraphAppend(positionsTopRoomB);
-    //gameGraph.performGraphAppend(positionsTopRoomC);
+    
+    gameGraph.addConnection2DByCoordinates(260, 180, 300, 180);
+    gameGraph.addConnection2DByCoordinates(260, 260, 300, 180);
 
 
     // Populate the vector with green dots
