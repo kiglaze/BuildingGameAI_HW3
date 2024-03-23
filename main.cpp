@@ -593,6 +593,8 @@ int main()
     float maxWindowY = 480.0;
     sf::RenderWindow window(sf::VideoMode(maxWindowX, maxWindowY), "SFML works!");
     
+    float tileSize = 40;
+
     std::vector<sf::RectangleShape> walls;
     float wallWidth = 10.0;
 
@@ -620,9 +622,14 @@ int main()
     addWall(walls, sf::Vector2f(maxWindowX * 0.10, wallWidth), sf::Vector2f(560, maxWindowY - (wallWidth + 20) - (maxWindowX * 0.35)), sf::Color::Green);
     addWall(walls, sf::Vector2f(wallWidth, (maxWindowX * 0.35) + wallWidth), sf::Vector2f(400 + (maxWindowX * 0.35), maxWindowY - (wallWidth + 20) - (maxWindowX * 0.35)), sf::Color::Black);
 
+    // Obstacles
+    addWall(walls, sf::Vector2f(tileSize, tileSize), sf::Vector2f(140, 300), sf::Color::Black);
+    addWall(walls, sf::Vector2f(tileSize * 2, tileSize), sf::Vector2f(300, 100), sf::Color::Black);
+    addWall(walls, sf::Vector2f(tileSize * 2.75, tileSize), sf::Vector2f(460, 100), sf::Color::Black);
+
 
     // Getting positions of centers of tiles. Green dots mark them.
-    float tileSize = 40;
+    // Tile size is defined earlier as 40.
     float maxTilesX = maxWindowX / tileSize;
     float maxTilesY = maxWindowY / tileSize;
 
