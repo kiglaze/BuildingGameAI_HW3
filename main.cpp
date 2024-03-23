@@ -885,7 +885,6 @@ int main()
                                 kinemArriveGoalObj = nullptr;
                             }
                             if (currentArriveGoalNode != nullptr) {
-                                delete currentArriveGoalNode;
                                 currentArriveGoalNode = nullptr; // To prevent dangling pointers
                             }
                             gameNodeIdPath = {};
