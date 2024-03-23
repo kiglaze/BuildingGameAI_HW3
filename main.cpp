@@ -489,6 +489,16 @@ public:
         }
     }
 
+    // Creates a subgraph out of the specifies locations, makes them all interconnected.
+    // Then, appends the edges and nodes to the original graph.
+    void performGraphAppend(std::vector<sf::Vector2f> &positionsTopRoomA) {
+        Graph gameSubGraphTopRoomA;
+        int largestIdGameGraph = getLargestIdInNodeMap();
+        gameSubGraphTopRoomA.loadFromNodesArr(positionsTopRoomA, largestIdGameGraph);
+        gameSubGraphTopRoomA.connectAllNodes();
+        mergeGraph(gameSubGraphTopRoomA);
+    }
+
 };
 
 void printGraphShortestPath(Graph &graph, int sourceNodeId, int targetNodeId, std::unordered_map<int, int> &predecessors)
@@ -545,6 +555,7 @@ float convertPixelDimToTileDotDim(float pixelDim, float tileSize) {
     return convertTileNumToPixel(convertPixelToTileNum(pixelDim, tileSize), tileSize);
 }
 
+void performGraphAppend(int &largestIdGameGraph, std::vector<sf::Vector2f> &positionsTopRoomA, Graph &gameGraph);
 
 int main()
 {
@@ -643,18 +654,24 @@ int main()
     std::vector<sf::Vector2f> positionsBottomLeft = {};
     std::vector<sf::Vector2f> positionsBottomRight = {};
     std::vector<sf::Vector2f> positionsTopRoom = {};
+    std::vector<sf::Vector2f> positionsTopRoomA = {};
+    std::vector<sf::Vector2f> positionsTopRoomB = {};
+    std::vector<sf::Vector2f> positionsTopRoomC = {};
 
+    // Here, j is x and i is y.
     for (int i = 0; i < maxTilesY; ++i) {
         for (int j = 0; j < maxTilesX; ++j) {
             bool isInLowerLeftRoom = j >= convertPixelToTileNum(50, tileSize) && j <= convertPixelToTileNum(360, tileSize) && i > convertPixelToTileNum(238, tileSize) &&  i < convertPixelToTileNum(451, tileSize);
             bool isInLowerRightRoom = j > convertPixelToTileNum(374, tileSize) && j <= convertPixelToTileNum(625, tileSize) && i > convertPixelToTileNum(238, tileSize) &&  i < convertPixelToTileNum(451, tileSize);
             bool isInUpperRoom = j >= convertPixelToTileNum(131, tileSize) && j < convertPixelToTileNum(568, tileSize) && i >= convertPixelToTileNum(45, tileSize) &&  i <= convertPixelToTileNum(225, tileSize);
+            bool isInTopRoomA = isInUpperRoom;
+            bool isInTopRoomB = isInUpperRoom;
+            bool isInTopRoomC = isInUpperRoom;
 
             //sf::Vector2f dotPosVect = sf::Vector2f((j * tileSize) + (tileSize / 2), (i * tileSize) + (tileSize / 2));
             
             sf::Vector2f dotPosVect = sf::Vector2f(convertTileNumToPixel(j, tileSize), convertTileNumToPixel(i, tileSize));
             if (isInLowerLeftRoom) {
-                
                 positions.push_back(dotPosVect);
                 positionsBottomLeft.push_back(dotPosVect);
             }
@@ -666,6 +683,18 @@ int main()
                 positions.push_back(dotPosVect);
                 positionsTopRoom.push_back(dotPosVect);
             }
+/*             if(isInTopRoomA) {
+                positions.push_back(dotPosVect);
+                positionsTopRoomA.push_back(dotPosVect);
+            }
+            if(isInTopRoomB) {
+                positions.push_back(dotPosVect);
+                positionsTopRoomB.push_back(dotPosVect);
+            }
+            if(isInTopRoomC) {
+                positions.push_back(dotPosVect);
+                positionsTopRoomC.push_back(dotPosVect);
+            } */
         }
     }
 
@@ -673,33 +702,20 @@ int main()
     Graph gameGraph;
     gameGraph.loadFromNodesArr(positionsBottomLeft);
     gameGraph.connectAllNodes();
-    int largestIdGameGraph = gameGraph.getLargestIdInNodeMap();
-    size_t numConnections1 = gameGraph.countConnections();
-    size_t numNodes1 = gameGraph.countNodes();
 
-    Graph gameSubGraphBottomRight;
-    gameSubGraphBottomRight.loadFromNodesArr(positionsBottomRight, largestIdGameGraph);
-    gameSubGraphBottomRight.connectAllNodes();
-    size_t numConnections2 = gameSubGraphBottomRight.countConnections();
-    size_t numNodes2 = gameSubGraphBottomRight.countNodes();
+    gameGraph.performGraphAppend(positionsBottomRight);
 
-    gameGraph.mergeGraph(gameSubGraphBottomRight);
-    size_t numConnections3 = gameGraph.countConnections();
-    size_t numNodes3 = gameGraph.countNodes();
     gameGraph.addConnection2DByCoordinates(380, 340, 420, 340);
 
-    Graph gameSubGraphTopRoom;
-    largestIdGameGraph = gameGraph.getLargestIdInNodeMap();
-    gameSubGraphTopRoom.loadFromNodesArr(positionsTopRoom, largestIdGameGraph);
-    gameSubGraphTopRoom.connectAllNodes();
-    size_t numConnections4 = gameSubGraphTopRoom.countConnections();
-    size_t numNodes4 = gameSubGraphTopRoom.countNodes();
+    gameGraph.performGraphAppend(positionsTopRoom);
 
-    gameGraph.mergeGraph(gameSubGraphTopRoom);
     gameGraph.addConnection2DByCoordinates(260, 180, 260, 260);
     gameGraph.addConnection2DByCoordinates(500, 180, 500, 260);
-    size_t numConnections5 = gameGraph.countConnections();
-    size_t numNodes5 = gameGraph.countNodes();
+
+    //gameGraph.performGraphAppend(positionsTopRoomA);
+    //gameGraph.performGraphAppend(positionsTopRoomB);
+    //gameGraph.performGraphAppend(positionsTopRoomC);
+
 
     // Populate the vector with green dots
     for (const auto& pos : positions)
@@ -939,6 +955,7 @@ int main()
     // The Graph destructor will delete the nodes
     return 0;
 }
+
 
 
 // Compile with: g++ -o main main.cpp
