@@ -640,7 +640,7 @@ int main()
         for (int j = 0; j < maxTilesX; ++j) {
             bool isInLowerLeftRoom = j >= convertPixelToTileNum(50, tileSize) && j <= convertPixelToTileNum(360, tileSize) && i > convertPixelToTileNum(238, tileSize) &&  i < convertPixelToTileNum(451, tileSize);
             bool isInUpperRoom = j > convertPixelToTileNum(131, tileSize) && j <= convertPixelToTileNum(568, tileSize) && i > convertPixelToTileNum(45, tileSize) &&  i <= convertPixelToTileNum(225, tileSize);
-            bool isInLowerRightRoom = j > convertPixelToTileNum(374, tileSize) && j <= convertPixelToTileNum(625, tileSize) && i > convertPixelToTileNum(238, tileSize) &&  i <= convertPixelToTileNum(451, tileSize);
+            bool isInLowerRightRoom = j > convertPixelToTileNum(374, tileSize) && j <= convertPixelToTileNum(625, tileSize) && i > convertPixelToTileNum(238, tileSize) &&  i < convertPixelToTileNum(451, tileSize);
 
             //sf::Vector2f dotPosVect = sf::Vector2f((j * tileSize) + (tileSize / 2), (i * tileSize) + (tileSize / 2));
             sf::Vector2f dotPosVect = sf::Vector2f(convertTileNumToPixel(j, tileSize), convertTileNumToPixel(i, tileSize));
@@ -726,6 +726,12 @@ int main()
 
     Kinematic* kinemMouseClickObj = nullptr;
     Node* nodeNearClick = nullptr;
+    int* currentArriveGoalNodeId = nullptr;
+    Node *currentArriveGoalNode;
+    std::vector<int> gameNodeIdPath = {};
+    int* gameNodeIdPathEnd = nullptr;
+    std::unordered_map<int, Node*> gameGraphNodeMap = gameGraph.getNodeMap();
+    Kinematic* kinemArriveGoalObj = nullptr;
     
     while (window.isOpen())
     {
@@ -793,7 +799,7 @@ int main()
 
                 nodeNearClick = gameGraph.findNodeByPosition(kinemMouseClickObjPos.x, kinemMouseClickObjPos.y);
 
-                if (nodeNearClick != nullptr) {
+                if (nodeNearClick != nullptr && currentArriveGoalNodeId == nullptr) {
                     sf::Vector2f spriteBPos = spriteB->getPosition();
                     sf::Vector2f startingTileDot = sf::Vector2f(convertPixelDimToTileDotDim(spriteBPos.x, tileSize), convertPixelDimToTileDotDim(spriteBPos.y, tileSize));
                     Node* nodeNearStart = gameGraph.findNodeByPosition(startingTileDot.x, startingTileDot.y);
@@ -803,7 +809,24 @@ int main()
                     int startNodeId = nodeNearStart->getId();
                     int goalNodeId = nodeNearClick->getId();
                     gameGraph.aStarEuclideanDist(startNodeId, goalNodeId, predecessorsAStarEuclidean);
-                    printGraphShortestPath(gameGraph, startNodeId, goalNodeId, predecessorsAStarEuclidean);
+                    //printGraphShortestPath(gameGraph, startNodeId, goalNodeId, predecessorsAStarEuclidean);
+                    gameNodeIdPath = gameGraph.getShortestPath(startNodeId, goalNodeId, predecessorsAStarEuclidean);
+
+                    currentArriveGoalNodeId = gameNodeIdPath.data();
+                    gameNodeIdPathEnd = gameNodeIdPath.data() + gameNodeIdPath.size() - 1;
+
+
+                    currentArriveGoalNode = gameGraphNodeMap[*currentArriveGoalNodeId];
+                    kinemArriveGoalObj = new Kinematic(sf::Vector2f(currentArriveGoalNode->getX(), currentArriveGoalNode->getY()), 0, sf::Vector2f(0, 0), 0);
+                    if (currentArriveGoalNode != nullptr) {
+                        delete currentArriveGoalNode;
+                        currentArriveGoalNode = nullptr; // To prevent dangling pointers
+                    }
+
+
+
+
+                    
                 } else {
                     if (kinemMouseClickObj != nullptr) {
                         delete kinemMouseClickObj;
@@ -815,15 +838,45 @@ int main()
 
             if (timeDelta > 0) {
                 
-                if (kinemMouseClickObj != nullptr) {
-                    Arrive arriveBehavior(kinemMouseClickObj, spriteB);
+                if (kinemArriveGoalObj != nullptr) {
+                    Arrive arriveBehavior(kinemArriveGoalObj, spriteB);
                     arriveBehavior.execute(timeDelta);
                     // std::cout << spriteB->getVelocityVector().x << ", " << spriteB->getVelocityVector().y << std::endl;
 
-                    Face faceBehavior(kinemMouseClickObj, spriteB);
+                    Face faceBehavior(kinemArriveGoalObj, spriteB);
                     faceBehavior.execute(timeDelta);
 
                     spriteB->dropSomeCrumbs();
+                
+                    // Need to only do this once currentArriveGoalNode is reached by spriteB.
+                    if(spriteB->hasArrivedAtKinemObj(kinemArriveGoalObj, 40)) {
+                        if(currentArriveGoalNodeId != gameNodeIdPathEnd) {
+                            currentArriveGoalNodeId++;
+                            currentArriveGoalNode = gameGraphNodeMap[*currentArriveGoalNodeId];
+                            if (kinemArriveGoalObj != nullptr) {
+                                delete kinemArriveGoalObj;
+                                kinemArriveGoalObj = nullptr;
+                            }
+                            kinemArriveGoalObj = new Kinematic(sf::Vector2f(currentArriveGoalNode->getX(), currentArriveGoalNode->getY()), 0, sf::Vector2f(0, 0), 0);
+                        } else {
+                            if (currentArriveGoalNodeId != nullptr) {
+                                currentArriveGoalNodeId = nullptr;
+                            }
+                            if (kinemArriveGoalObj != nullptr) {
+                                delete kinemArriveGoalObj;
+                                kinemArriveGoalObj = nullptr;
+                            }
+                            if (currentArriveGoalNode != nullptr) {
+                                delete currentArriveGoalNode;
+                                currentArriveGoalNode = nullptr; // To prevent dangling pointers
+                            }
+                            gameNodeIdPath = {};
+                            
+                        }
+                    }
+                    
+
+
                 }
 
             }

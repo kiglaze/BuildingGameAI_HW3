@@ -15,6 +15,8 @@ public:
 
     void dropSomeCrumbs();
 
+    bool hasArrivedAtKinemObj(Kinematic* arrivalGoalKinemObj, float arrivalDistance);
+
     sf::Vector2f getVelocityVector() const override;
     float getSpriteWidth();
     float getSpriteHeight();

@@ -1,4 +1,5 @@
 #include "Sprite.h"
+#include "Kinematic.h"
 #include "Crumb.h"
 #include <iostream>
 #include <vector>
@@ -56,6 +57,13 @@ void Sprite::dropSomeCrumbs() {
         else
             crumb_idx = 0;
     }
+}
+
+bool Sprite::hasArrivedAtKinemObj(Kinematic* arrivalGoalKinemObj, float arrivalDistance) {
+    sf::Vector2f goalPositionVect = arrivalGoalKinemObj->getPosition();
+    sf::Vector2f spritePositionVect = getPosition();
+    float distance = std::sqrt(std::pow(goalPositionVect.x - spritePositionVect.x, 2) + std::pow(goalPositionVect.y - spritePositionVect.y, 2));
+    return (distance <= arrivalDistance);
 }
 
 sf::Vector2f Sprite::getVelocityVector() const {
