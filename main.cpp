@@ -634,7 +634,7 @@ int main()
     addWall(walls, sf::Vector2f(wallWidth, (maxWindowX * 0.35) + wallWidth), sf::Vector2f(400 + (maxWindowX * 0.35), maxWindowY - (wallWidth + 20) - (maxWindowX * 0.35)), sf::Color::Black);
 
     // Obstacles
-    addWall(walls, sf::Vector2f(tileSize, tileSize), sf::Vector2f(140, 300), sf::Color::Black);
+    addWall(walls, sf::Vector2f(tileSize * 3.25, tileSize * 3), sf::Vector2f(50, 340), sf::Color::Black);
     addWall(walls, sf::Vector2f(tileSize * 2, tileSize), sf::Vector2f(300, 100), sf::Color::Black);
     addWall(walls, sf::Vector2f(tileSize * 2.75, tileSize), sf::Vector2f(460, 100), sf::Color::Black);
 
@@ -652,7 +652,11 @@ int main()
 /*         {100, 100}, {200, 200}, {300, 300}, {400, 400}, {500, 500}
     }; */
     std::vector<sf::Vector2f> positionsBottomLeft = {};
+    std::vector<sf::Vector2f> positionsBottomLeftA = {};
+    std::vector<sf::Vector2f> positionsBottomLeftB = {};
+
     std::vector<sf::Vector2f> positionsBottomRight = {};
+
     std::vector<sf::Vector2f> positionsTopRoom = {};
     std::vector<sf::Vector2f> positionsTopRoomA = {};
     std::vector<sf::Vector2f> positionsTopRoomB = {};
@@ -670,6 +674,8 @@ int main()
             bool isInTopRoomC = isInUpperRoom && j >= convertPixelToTileNum(300, tileSize) && i < convertPixelToTileNum(100, tileSize);
             bool isInTopRoomD = isInUpperRoom && j == convertPixelToTileNum(420, tileSize) && i >= convertPixelToTileNum(100, tileSize) && i <= convertPixelToTileNum(140, tileSize);
 
+            bool isInBottomLeftA = isInLowerLeftRoom && j > convertPixelToTileNum(180, tileSize);
+            bool isInBottomLeftB = isInLowerLeftRoom && j <= convertPixelToTileNum(180, tileSize) && i < convertPixelToTileNum(340, tileSize);
 
             //sf::Vector2f dotPosVect = sf::Vector2f((j * tileSize) + (tileSize / 2), (i * tileSize) + (tileSize / 2));
             
@@ -705,13 +711,25 @@ int main()
                 positions.push_back(dotPosVect);
                 positionsTopRoomD.push_back(dotPosVect);
             }
+
+            if(isInBottomLeftA) {
+                positions.push_back(dotPosVect);
+                positionsBottomLeftA.push_back(dotPosVect);
+            }
+
+            if(isInBottomLeftB) {
+                positions.push_back(dotPosVect);
+                positionsBottomLeftB.push_back(dotPosVect);
+            }
         }
     }
 
 
     Graph gameGraph;
-    gameGraph.loadFromNodesArr(positionsBottomLeft);
+    gameGraph.loadFromNodesArr(positionsBottomLeftA);
     gameGraph.connectAllNodes();
+
+    gameGraph.performGraphAppend(positionsBottomLeftB);
 
     gameGraph.performGraphAppend(positionsBottomRight);
 
@@ -724,6 +742,7 @@ int main()
     gameGraph.performGraphAppend(positionsTopRoomC);
     gameGraph.performGraphAppend(positionsTopRoomD);
 
+
     gameGraph.addConnection2DByCoordinates(260, 180, 260, 260);
     gameGraph.addConnection2DByCoordinates(500, 180, 500, 260);
 
@@ -731,10 +750,16 @@ int main()
     gameGraph.addConnection2DByCoordinates(260, 260, 300, 180);
 
     gameGraph.addConnection2DByCoordinates(260, 60, 300, 60);
+    gameGraph.addConnection2DByCoordinates(260, 100, 300, 60);
 
     gameGraph.addConnection2DByCoordinates(420, 180, 420, 140);
     gameGraph.addConnection2DByCoordinates(420, 100, 420, 60);
 
+    gameGraph.addConnection2DByCoordinates(180, 260, 220, 260);
+    gameGraph.addConnection2DByCoordinates(180, 300, 220, 300);
+    //gameGraph.addConnection2DByCoordinates(180, 340, 220, 340);
+    gameGraph.addConnection2DByCoordinates(180, 300, 220, 340);
+    //gameGraph.addConnection2DByCoordinates(180, 340, 220, 380);
 
     // Populate the vector with green dots
     for (const auto& pos : positions)
