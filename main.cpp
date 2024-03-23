@@ -657,6 +657,7 @@ int main()
     std::vector<sf::Vector2f> positionsTopRoomA = {};
     std::vector<sf::Vector2f> positionsTopRoomB = {};
     std::vector<sf::Vector2f> positionsTopRoomC = {};
+    std::vector<sf::Vector2f> positionsTopRoomD = {};
 
     // Here, j is x and i is y.
     for (int i = 0; i < maxTilesY; ++i) {
@@ -666,7 +667,9 @@ int main()
             bool isInUpperRoom = j >= convertPixelToTileNum(131, tileSize) && j < convertPixelToTileNum(568, tileSize) && i >= convertPixelToTileNum(45, tileSize) &&  i <= convertPixelToTileNum(225, tileSize);
             bool isInTopRoomA = isInUpperRoom && j < convertPixelToTileNum(300, tileSize);
             bool isInTopRoomB = isInUpperRoom && j >= convertPixelToTileNum(300, tileSize) && i > convertPixelToTileNum(140, tileSize);
-            bool isInTopRoomC = isInUpperRoom;
+            bool isInTopRoomC = isInUpperRoom && j >= convertPixelToTileNum(300, tileSize) && i < convertPixelToTileNum(100, tileSize);
+            bool isInTopRoomD = isInUpperRoom && j == convertPixelToTileNum(420, tileSize) && i >= convertPixelToTileNum(100, tileSize) && i <= convertPixelToTileNum(140, tileSize);
+
 
             //sf::Vector2f dotPosVect = sf::Vector2f((j * tileSize) + (tileSize / 2), (i * tileSize) + (tileSize / 2));
             
@@ -692,11 +695,16 @@ int main()
                 positions.push_back(dotPosVect);
                 positionsTopRoomB.push_back(dotPosVect);
             }
-            /*
+            
             if(isInTopRoomC) {
                 positions.push_back(dotPosVect);
                 positionsTopRoomC.push_back(dotPosVect);
-            } */
+            }
+
+            if(isInTopRoomD) {
+                positions.push_back(dotPosVect);
+                positionsTopRoomD.push_back(dotPosVect);
+            }
         }
     }
 
@@ -713,13 +721,19 @@ int main()
 
     gameGraph.performGraphAppend(positionsTopRoomA);
     gameGraph.performGraphAppend(positionsTopRoomB);
-    //gameGraph.performGraphAppend(positionsTopRoomC);
+    gameGraph.performGraphAppend(positionsTopRoomC);
+    gameGraph.performGraphAppend(positionsTopRoomD);
 
     gameGraph.addConnection2DByCoordinates(260, 180, 260, 260);
     gameGraph.addConnection2DByCoordinates(500, 180, 500, 260);
-    
+
     gameGraph.addConnection2DByCoordinates(260, 180, 300, 180);
     gameGraph.addConnection2DByCoordinates(260, 260, 300, 180);
+
+    gameGraph.addConnection2DByCoordinates(260, 60, 300, 60);
+
+    gameGraph.addConnection2DByCoordinates(420, 180, 420, 140);
+    gameGraph.addConnection2DByCoordinates(420, 100, 420, 60);
 
 
     // Populate the vector with green dots
