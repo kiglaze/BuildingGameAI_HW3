@@ -89,10 +89,27 @@ private:
     std::unordered_map<int, Node*> nodeMap;
 
 public:
+    Graph() {
+
+    }
     ~Graph() {
         // Make sure to delete all nodes to prevent memory leaks
         for (Node* node : nodes) {
             delete node;
+        }
+    }
+    Graph(const Graph& other) {
+        // Copying nodes
+        for (const auto& nodePair : other.nodeMap) {
+            Node* newNode = new Node(*nodePair.second); // Assuming Node has a suitable copy constructor
+            this->addNode(newNode);
+        }
+        
+        // Copying connections
+        for (const auto& connection : other.connections) {
+            Node* fromNode = this->nodeMap[connection.fromNode->getId()];
+            Node* toNode = this->nodeMap[connection.toNode->getId()];
+            this->addConnection(fromNode, toNode, connection.cost);
         }
     }
 
@@ -262,6 +279,9 @@ public:
                 }
             }
         }
+
+        size_t pqSize = pq.size();
+        std::cout << "# NODES IN FRINGE: " << pqSize << std::endl;
 
         // Distances and predecessors are now populated
         // You can use the predecessors map to reconstruct the shortest path
@@ -612,6 +632,23 @@ int main()
     std::cout << "" << std::endl;
     std::cout << "LARGE GRAPH: " << std::endl;
     runAllShortestPathAlgs(sourceNodeId, targetNodeId, bigGraph);
+
+    int sourceNodeId2 = 1252306;
+    int targetNodeId2 = 1311102;
+    std::cout << "SMALL GRAPH: " << std::endl;
+    runAllShortestPathAlgs(sourceNodeId2, targetNodeId2, graph);
+    std::cout << "" << std::endl;
+    std::cout << "LARGE GRAPH: " << std::endl;
+    runAllShortestPathAlgs(sourceNodeId2, targetNodeId2, bigGraph);
+
+    int sourceNodeId3 = 1599403;
+    int targetNodeId3 = 1067302;
+    std::cout << "SMALL GRAPH: " << std::endl;
+    runAllShortestPathAlgs(sourceNodeId3, targetNodeId3, graph);
+    std::cout << "" << std::endl;
+    std::cout << "LARGE GRAPH: " << std::endl;
+    runAllShortestPathAlgs(sourceNodeId3, targetNodeId3, bigGraph);
+
 
     // START OF SFML CODE PORTION.
     // Pasting in code from HW2
