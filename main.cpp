@@ -562,7 +562,7 @@ void printTimeElapsed(clock_t timeStart, clock_t timeEnd) {
 
 void performGraphAppend(int &largestIdGameGraph, std::vector<sf::Vector2f> &positionsTopRoomA, Graph &gameGraph);
 
-void runAllShortestPathAlgs(int sourceNodeId, int targetNodeId, Graph graph) {
+void runAllShortestPathAlgs(int sourceNodeId, int targetNodeId, Graph& graph) {
     std::cout << "Running for nodes: SOURCE: " << sourceNodeId << "; TARGET: " << targetNodeId << std::endl;
     
     std::cout << "Dijkstra's" << std::endl;
