@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cmath>
 #include <typeinfo>
+#include <ctime>
 
 #include <SFML/Graphics.hpp>
 #include <memory>
@@ -269,6 +270,7 @@ public:
     void aStar(int sourceId, int targetId, std::function<float(int, int)> heuristicFun, std::unordered_map<int, int>& predecessors) {
         std::unordered_map<int, float> gScore, fScore;
         auto nodeMap = getNodeMap(); // Assume this exists and is populated elsewhere
+        std::vector<Node*> fringe;
 
         auto comp = [&fScore](int lhs, int rhs) {
             return fScore[lhs] > fScore[rhs];
@@ -293,6 +295,8 @@ public:
             openSet.pop();
             openSetItems.erase(currentNodeId);
 
+            fringe.push_back(nodeMap[currentNodeId]);
+
             if (currentNodeId == targetId) break;
 
             for (const auto& conn : getConnections(*nodeMap[currentNodeId])) {
@@ -309,8 +313,9 @@ public:
                     }
                 }
             }
+            
         }
-
+        std::cout << "# NODES IN FRINGE: " << fringe.size() << std::endl;
         // Distances and predecessors are now populated
         // Further processing can be done outside this function
     }
@@ -549,37 +554,66 @@ float convertPixelDimToTileDotDim(float pixelDim, float tileSize) {
     return convertTileNumToPixel(convertPixelToTileNum(pixelDim, tileSize), tileSize);
 }
 
+void printTimeElapsed(clock_t timeStart, clock_t timeEnd) {
+    double elapsed = double(timeEnd - timeStart) / CLOCKS_PER_SEC;
+    std::cout << "Time taken by function: " 
+         << elapsed << " seconds" << std::endl;
+}
+
 void performGraphAppend(int &largestIdGameGraph, std::vector<sf::Vector2f> &positionsTopRoomA, Graph &gameGraph);
+
+void runAllShortestPathAlgs(int sourceNodeId, int targetNodeId, Graph graph) {
+    std::cout << "Running for nodes: SOURCE: " << sourceNodeId << "; TARGET: " << targetNodeId << std::endl;
+    
+    std::cout << "Dijkstra's" << std::endl;
+    std::unordered_map<int, int> predecessorsDijkstra;
+    clock_t startD = clock();
+    graph.dijkstra(sourceNodeId, predecessorsDijkstra);
+    clock_t stopD = clock();
+    printTimeElapsed(startD, stopD);
+    printGraphShortestPath(graph, sourceNodeId, targetNodeId, predecessorsDijkstra);
+    std::cout << "" << std::endl;
+
+    std::cout << "A* Admissible" << std::endl;
+    std::unordered_map<int, int> predecessorsAStarLatLon;
+    clock_t startA1 = clock();
+    graph.aStarLatLonDist(sourceNodeId, targetNodeId, predecessorsAStarLatLon);
+    clock_t stopA1 = clock();
+    printTimeElapsed(startA1, stopA1);
+    printGraphShortestPath(graph, sourceNodeId, targetNodeId, predecessorsAStarLatLon);
+    std::cout << "" << std::endl;
+
+    std::cout << "A* In-admissible" << std::endl;
+    std::unordered_map<int, int> predecessorsAStarManhattan;
+    clock_t startA2 = clock();
+    graph.aStarEarthManhattanDist(sourceNodeId, targetNodeId, predecessorsAStarManhattan);
+    clock_t stopA2 = clock();
+    printTimeElapsed(startA2, stopA2);
+    printGraphShortestPath(graph, sourceNodeId, targetNodeId, predecessorsAStarManhattan);
+    std::cout << "" << std::endl;
+}
 
 int main()
 {
     // Create a graph
     Graph graph;
     graph.loadFromCSV("subset_airport_distances_revised.csv");
-
     graph.generateDotFile("graph_dot_file.dot");
+
+    // Create the big graph
+    Graph bigGraph;
+    bigGraph.loadFromCSV("full_airport_distances_revised.csv");
 
     int sourceNodeId = 1145501; // Example source node ID
     int targetNodeId = 1564301;
 
-    std::cout << "Dijkstra's" << std::endl;
-    std::unordered_map<int, int> predecessorsDijkstra;
-    graph.dijkstra(sourceNodeId, predecessorsDijkstra);
-    printGraphShortestPath(graph, sourceNodeId, targetNodeId, predecessorsDijkstra);
+    std::cout << "SMALL GRAPH: " << std::endl;
+    runAllShortestPathAlgs(sourceNodeId, targetNodeId, graph);
     std::cout << "" << std::endl;
+    std::cout << "LARGE GRAPH: " << std::endl;
+    runAllShortestPathAlgs(sourceNodeId, targetNodeId, bigGraph);
 
-    std::cout << "A* Admissible" << std::endl;
-    std::unordered_map<int, int> predecessorsAStarLatLon;
-    graph.aStarLatLonDist(sourceNodeId, targetNodeId, predecessorsAStarLatLon);
-    printGraphShortestPath(graph, sourceNodeId, targetNodeId, predecessorsAStarLatLon);
-    std::cout << "" << std::endl;
-
-    std::cout << "A* In-admissible" << std::endl;
-    std::unordered_map<int, int> predecessorsAStarManhattan;
-    graph.aStarEarthManhattanDist(sourceNodeId, targetNodeId, predecessorsAStarManhattan);
-    printGraphShortestPath(graph, sourceNodeId, targetNodeId, predecessorsAStarManhattan);
-    std::cout << "" << std::endl;
-
+    // START OF SFML CODE PORTION.
     // Pasting in code from HW2
     sf::Clock clock;
     float maxWindowX = 640.0;
