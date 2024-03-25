@@ -1,3 +1,8 @@
+/* 
+HW3 Assignment for CSC584: Building Game AI
+Programmer: Iris Glaze
+Data input csv files: full_airport_distances_revised.csv and subset_airport_distances_revised.csv
+ */
 #include <iostream>
 #include <functional>
 #include <vector>
@@ -66,7 +71,7 @@ public:
 };
 
 
-// Forward declaration of Node to satisfy the Connection's need for Node
+// Directional connection between two Node objects.
 class Connection {
 public:
     Node* fromNode; // The node that this connection came from.
@@ -82,6 +87,7 @@ public:
     }
 };
 
+// Represents a directional weighted graph which contains nodes and connections between certain nodes.
 class Graph {
 private:
     std::vector<Node*> nodes; // A list of all nodes in the graph
@@ -89,15 +95,18 @@ private:
     std::unordered_map<int, Node*> nodeMap;
 
 public:
+    // Default constructor.
     Graph() {
 
     }
+    // Destructor
     ~Graph() {
         // Make sure to delete all nodes to prevent memory leaks
         for (Node* node : nodes) {
             delete node;
         }
     }
+    // Copy constructor
     Graph(const Graph& other) {
         // Copying nodes
         for (const auto& nodePair : other.nodeMap) {
@@ -149,6 +158,7 @@ public:
         return result;
     }
 
+    // Print out the graph for debugging purposes.
     void printGraph() const {
         for (const auto& node : nodes) {
             std::cout << "Node " << node->getId() << " connects to: ";
@@ -160,6 +170,8 @@ public:
         }
     }
 
+    // Generate the .dot file to then generate the graph diagram with graphviz. 
+    // Assistance obtained from ChatGPT.
     void generateDotFile(const std::string& filename) {
         std::ofstream out(filename);
         out << "digraph G {" << std::endl;
@@ -175,6 +187,7 @@ public:
         out << "}" << std::endl;
     }
 
+    // Load a graph's nodes and connections from an input .csv file.
     void loadFromCSV(const std::string& filename) {
         std::ifstream file(filename);
         std::string line;
@@ -233,7 +246,8 @@ public:
         return nullptr; // Return nullptr if no matching node is found
     }
 
-    // 
+    // Load a Graph's nodes from an input array of x, y positions.
+    // The starting id offset prefents conflicting ids.
     void loadFromNodesArr(const std::vector<sf::Vector2f>& nodePositions, int startingIdOffset = 0) {
         int unusedId = 1;
         if (!nodeMap.empty()) {
@@ -247,6 +261,10 @@ public:
         }
     }
 
+    // Dijkstra's Algorithm for shortest path.
+    // Would need to run eithe getShortestPath() or printGraphShortestPath() afterwards to view results.
+    // Some assistance from ChatGPT.
+    // Results get stored in the predecessors unordered map.
     void dijkstra(int sourceId, std::unordered_map<int, int>& predecessors) {
         std::unordered_map<int, float> distances;
         auto comp = [&distances](int lhs, int rhs) {
@@ -287,6 +305,10 @@ public:
         // You can use the predecessors map to reconstruct the shortest path
     }
 
+    // A* Algorithm for shortest path. 
+    // Would need to run eithe getShortestPath() or printGraphShortestPath() afterwards to view results.
+    // Some assistance from ChatGPT.
+    // Results get stored in the predecessors unordered map.
     void aStar(int sourceId, int targetId, std::function<float(int, int)> heuristicFun, std::unordered_map<int, int>& predecessors) {
         std::unordered_map<int, float> gScore, fScore;
         auto nodeMap = getNodeMap(); // Assume this exists and is populated elsewhere
@@ -340,8 +362,8 @@ public:
         // Further processing can be done outside this function
     }
 
-
-    // Function to reconstruct the shortest path from source to target
+    // Function to reconstruct the shortest path from source to target.
+    // This gets run after either Dijkstra's or A* is run first.
     std::vector<int> getShortestPath(int sourceId, int targetId, const std::unordered_map<int, int>& predecessors) {
         std::vector<int> path;
         for (int at = targetId; at != -1; at = predecessors.at(at)) {
@@ -363,6 +385,7 @@ public:
     }
 
     // Calculate the distance between 2 GPS co-ordinates on the Earth.
+    // Assistance from ChatGPT for the distance function.
     // lat1, lon1, lat2, lon2
     double calculateEarthDistance(double lat1, double lon1, double lat2, double lon2) {
         // Convert latitude and longitude from degrees to radians
@@ -395,6 +418,7 @@ public:
     }
 
     // Inadmissible heuristic for A*
+    // Calculations for the horizontal and vertical distances on a globe obtained from ChatGPT.
     float aStarHeuristicEarthManhattanDist(int id1, int id2) {
         auto nodeMap = getNodeMap(); // Assuming getNodeMap() returns std::unordered_map<int, Node*>
         
@@ -432,18 +456,21 @@ public:
         return calculateEuclideanDistance(node1->getX(), node1->getY(), node2->getX(), node2->getY());
     }
 
+    // Run A* with the distance between two GPS coordinates on the globe as the heuristic.
     void aStarLatLonDist(int sourceId, int targetId, std::unordered_map<int, int>& predecessors) {
         // Here, 'this' is valid because we are in a non-static member function
         this->aStar(sourceId, targetId,
                     [this](int id1, int id2) { return this->aStarHeuristicLatLonDist(id1, id2); }, predecessors);
     }
 
+    // Run A* with the horizontal distance plus the vertical distance between two GPS coordinates on a globe.
     void aStarEarthManhattanDist(int sourceId, int targetId, std::unordered_map<int, int>& predecessors) {
         // Here, 'this' is valid because we are in a non-static member function
         this->aStar(sourceId, targetId,
                     [this](int id1, int id2) { return this->aStarHeuristicEarthManhattanDist(id1, id2); }, predecessors);
     }
 
+    // Run A* with the standard 2D Euclidean Distance as the heuristic.
     void aStarEuclideanDist(int sourceId, int targetId, std::unordered_map<int, int>& predecessors) {
         // Here, 'this' is valid because we are in a non-static member function
         this->aStar(sourceId, targetId,
@@ -472,7 +499,9 @@ public:
         }
     }
 
-    // Merge another graph into this one
+    // Merge another graph into this one. 
+    // Assumes that the two node graphs are completely exclusive from each other.
+    // The point is to add connections between the two after. Used for adding division scheme regions.
     void mergeGraph(const Graph& other) {
         int unusedId = 1;
         if (!nodeMap.empty()) {
@@ -498,6 +527,8 @@ public:
         }
     }
 
+    // Allows the combining of two division schemes.
+    // Must specify the exact x, y coordinates.
     void addConnection2DByCoordinates(float x1, float y1, float x2, float y2) {
         Node* n1 = findNodeByPosition(x1, y1);
         Node* n2 = findNodeByPosition(x2, y2);
@@ -520,6 +551,7 @@ public:
 
 };
 
+// Given a graph that has had either Dijkstra or A* run on it, print out the shortest path and relevant costs.
 void printGraphShortestPath(Graph &graph, int sourceNodeId, int targetNodeId, std::unordered_map<int, int> &predecessors)
 {
     std::vector<int> path = graph.getShortestPath(sourceNodeId, targetNodeId, predecessors);
@@ -548,11 +580,7 @@ void printGraphShortestPath(Graph &graph, int sourceNodeId, int targetNodeId, st
     }
 }
 
-void printIt1(int id1, int id2) {
-    std::cout << "I like the number " << id1 << " and the number " << id2 << std::endl;
-}
-
-// Function to add a wall
+// Function to add a wall to the SFML game.
 void addWall(std::vector<sf::RectangleShape>& walls, const sf::Vector2f& size, const sf::Vector2f& position, const sf::Color& color) {
     sf::RectangleShape wall(size);
     wall.setPosition(position);
@@ -560,11 +588,12 @@ void addWall(std::vector<sf::RectangleShape>& walls, const sf::Vector2f& size, c
     walls.push_back(wall);
 }
 
+// Convert the pixel in either the x or y dimension to the corresponding tile index.
 int convertPixelToTileNum(float pixelDimensionVal, float tileSize) {
-    //return (pixelDimensionVal - (tileSize / 2)) / tileSize;
     return floor(pixelDimensionVal / tileSize);
 }
 
+// Convert the tile index (in either the x or y dimension) to the corresponding tile dot dimension value.
 float convertTileNumToPixel(int tileNum, float tileSize) {
     return (float(tileNum) * tileSize) + (tileSize / 2);
 }
@@ -574,6 +603,7 @@ float convertPixelDimToTileDotDim(float pixelDim, float tileSize) {
     return convertTileNumToPixel(convertPixelToTileNum(pixelDim, tileSize), tileSize);
 }
 
+// Given the start and end times, print the time elapsed. Used for execution time comparisons.
 void printTimeElapsed(clock_t timeStart, clock_t timeEnd) {
     double elapsed = double(timeEnd - timeStart) / CLOCKS_PER_SEC;
     std::cout << "Time taken by function: " 
@@ -582,6 +612,7 @@ void printTimeElapsed(clock_t timeStart, clock_t timeEnd) {
 
 void performGraphAppend(int &largestIdGameGraph, std::vector<sf::Vector2f> &positionsTopRoomA, Graph &gameGraph);
 
+// Runs multple algorithms in one go, for the sake of comparison.
 void runAllShortestPathAlgs(int sourceNodeId, int targetNodeId, Graph& graph) {
     std::cout << "Running for nodes: SOURCE: " << sourceNodeId << "; TARGET: " << targetNodeId << std::endl;
     
@@ -615,15 +646,17 @@ void runAllShortestPathAlgs(int sourceNodeId, int targetNodeId, Graph& graph) {
 
 int main()
 {
-    // Create a graph
+    // Create the smaller graph.
     Graph graph;
     graph.loadFromCSV("subset_airport_distances_revised.csv");
     graph.generateDotFile("graph_dot_file.dot");
 
-    // Create the big graph
+    // Create the big graph.
     Graph bigGraph;
     bigGraph.loadFromCSV("full_airport_distances_revised.csv");
 
+    // Assess the different algorithms for the different combinations of source and target nodes.
+    // Measures determined cost, execution time, and fringe node count.
     int sourceNodeId = 1145501; // Example source node ID
     int targetNodeId = 1564301;
 
@@ -651,7 +684,6 @@ int main()
 
 
     // START OF SFML CODE PORTION.
-    // Pasting in code from HW2
     sf::Clock clock;
     float maxWindowX = 640.0;
     // Window height is 3/4 of width.
@@ -663,6 +695,7 @@ int main()
     std::vector<sf::RectangleShape> walls;
     float wallWidth = 10.0;
 
+    // Add a bunch of walls to create the 3 different rooms.
     // bottom-left room: x range: 50-360. y range: 238-451
     addWall(walls, sf::Vector2f(maxWindowX * 0.55, wallWidth), sf::Vector2f(40, maxWindowY - (wallWidth + 20)), sf::Color::Black);
     addWall(walls, sf::Vector2f(wallWidth, maxWindowX * 0.35), sf::Vector2f(40, maxWindowY - (wallWidth + 20) - (maxWindowX * 0.35)), sf::Color::Black);
@@ -775,24 +808,27 @@ int main()
         }
     }
 
-
+    // Build the graph for game path finding purposes here.
     Graph gameGraph;
+
+    // Combinining the multiple division scheme regions for the bottom left room.
     gameGraph.loadFromNodesArr(positionsBottomLeftA);
     gameGraph.connectAllNodes();
 
     gameGraph.performGraphAppend(positionsBottomLeftB);
 
+    // Combinining the single regions for the bottom right room with the existing game's node graph.
     gameGraph.performGraphAppend(positionsBottomRight);
 
     gameGraph.addConnection2DByCoordinates(380, 340, 420, 340);
 
-
+    // Combinining the multiple division scheme regions for the top room with the existing game's node graph.
     gameGraph.performGraphAppend(positionsTopRoomA);
     gameGraph.performGraphAppend(positionsTopRoomB);
     gameGraph.performGraphAppend(positionsTopRoomC);
     gameGraph.performGraphAppend(positionsTopRoomD);
 
-
+    // Adding connections between certain nodes in the various division scheme graph sub-regions.
     gameGraph.addConnection2DByCoordinates(260, 180, 260, 260);
     gameGraph.addConnection2DByCoordinates(500, 180, 500, 260);
 
@@ -811,7 +847,7 @@ int main()
     gameGraph.addConnection2DByCoordinates(180, 300, 220, 340);
     //gameGraph.addConnection2DByCoordinates(180, 340, 220, 380);
 
-    // Populate the vector with green dots
+    // Populate the vector with green dots for visual aid purposes and debugging help.
     for (const auto& pos : positions)
     {
         sf::CircleShape dot(1); // Dot with radius 5
@@ -820,8 +856,7 @@ int main()
         greenDots.push_back(dot);
     }
 
-
-
+    // Part of the adding breadcrumbs process.
     std::vector<Crumb> breadcrumbs = std::vector<Crumb>();
     for(int i = 0; i < 100; i++)
     {
@@ -928,8 +963,7 @@ int main()
                         sf::Vector2f spriteBPos = spriteB->getPosition();
                         sf::Vector2f startingTileDot = sf::Vector2f(convertPixelDimToTileDotDim(spriteBPos.x, tileSize), convertPixelDimToTileDotDim(spriteBPos.y, tileSize));
                         Node* nodeNearStart = gameGraph.findNodeByPosition(startingTileDot.x, startingTileDot.y);
-                        //TODO!
-                        // Printing shortest path of sprite to click using A* with Euclidean distance.
+                        // Finding the shortest path of sprite to the click location using A* with the Euclidean distance heuristic.
                         std::unordered_map<int, int> predecessorsAStarEuclidean;
                         int startNodeId = nodeNearStart->getId();
                         int goalNodeId = nodeNearClick->getId();
@@ -937,9 +971,10 @@ int main()
                         //printGraphShortestPath(gameGraph, startNodeId, goalNodeId, predecessorsAStarEuclidean);
                         gameNodeIdPath = gameGraph.getShortestPath(startNodeId, goalNodeId, predecessorsAStarEuclidean);
 
+                        // currentArriveGoalNodeId determines the next node the sprite should focus on arriving at.
+                        // It changes when a sprite reaches a node within the path that isn't the last node required to reach the mouse click.
                         currentArriveGoalNodeId = gameNodeIdPath.data();
                         gameNodeIdPathEnd = gameNodeIdPath.data() + gameNodeIdPath.size() - 1;
-
 
                         currentArriveGoalNode = gameGraphNodeMap[*currentArriveGoalNodeId];
                         if (kinemArriveGoalObj != nullptr) {
@@ -949,9 +984,6 @@ int main()
                         kinemArriveGoalObj = new Kinematic(sf::Vector2f(currentArriveGoalNode->getX(), currentArriveGoalNode->getY()), 0, sf::Vector2f(0, 0), 0);
 
                     }
-
-
-
                     
                 } else {
                     if (kinemMouseClickObj != nullptr) {
@@ -975,6 +1007,7 @@ int main()
                 
                     // Need to only do this once currentArriveGoalNode is reached by spriteB.
                     if(spriteB->hasArrivedAtKinemObj(kinemArriveGoalObj, 30)) {
+                        // If this is not the last node in the path, set the next current goal node.
                         if(currentArriveGoalNodeId != gameNodeIdPathEnd) {
                             currentArriveGoalNodeId++;
                             currentArriveGoalNode = gameGraphNodeMap[*currentArriveGoalNodeId];
@@ -983,6 +1016,7 @@ int main()
                                 kinemArriveGoalObj = nullptr;
                             }
                             kinemArriveGoalObj = new Kinematic(sf::Vector2f(currentArriveGoalNode->getX(), currentArriveGoalNode->getY()), 0, sf::Vector2f(0, 0), 0);
+                        // If this is the final destination node in a path, then do some memory cleanup.
                         } else {
                             if (currentArriveGoalNodeId != nullptr) {
                                 currentArriveGoalNodeId = nullptr;
@@ -1035,7 +1069,3 @@ int main()
     return 0;
 }
 
-
-
-// Compile with: g++ -o main main.cpp
-// Run with: ./main
