@@ -224,8 +224,6 @@ public:
         unusedId = unusedId + startingIdOffset;
 
         for (const auto& nodePosition : nodePositions) {
-            std::cout << nodePosition.x << ", " << nodePosition.y << std::endl;
-
             Node* additionalNode = new Node(unusedId++, nodePosition.x, nodePosition.y);
             addNode(additionalNode);
         }
@@ -357,10 +355,6 @@ public:
     // Calculate the distance between two points on a 2D grid.
     double calculateEuclideanDistance(double x1, double y1, double x2, double y2) {
         return std::sqrt(std::pow(x2 - x1, 2) + std::pow(y2 - y1, 2));
-    }
-
-    void fun2(void (*fun)(int, int), int someVal1, int someVal2) {
-        fun(someVal1, someVal2);
     }
 
     // Admissible heuristic for A*
@@ -563,39 +557,28 @@ int main()
     Graph graph;
     graph.loadFromCSV("subset_airport_distances_revised.csv");
 
-
-/*     // Create and add nodes to the graph
-    Node* node1 = new Node(1);
-    Node* node2 = new Node(2);
-    graph.addNode(node1);
-    graph.addNode(node2);
-
-    // Add a connection between the nodes
-    graph.addConnection(node1, node2, 10.0f); */
-
-    // Print the graph
-    //graph.printGraph();
-
     graph.generateDotFile("graph_dot_file.dot");
 
     int sourceNodeId = 1145501; // Example source node ID
     int targetNodeId = 1564301;
 
-    //graph.fun2(printIt1, sourceNodeId, targetNodeId);
-    //UNCOMMENT
-/*     std::unordered_map<int, int> predecessorsDijkstra;
+    std::cout << "Dijkstra's" << std::endl;
+    std::unordered_map<int, int> predecessorsDijkstra;
     graph.dijkstra(sourceNodeId, predecessorsDijkstra);
     printGraphShortestPath(graph, sourceNodeId, targetNodeId, predecessorsDijkstra);
-    
+    std::cout << "" << std::endl;
+
+    std::cout << "A* Admissible" << std::endl;
     std::unordered_map<int, int> predecessorsAStarLatLon;
     graph.aStarLatLonDist(sourceNodeId, targetNodeId, predecessorsAStarLatLon);
     printGraphShortestPath(graph, sourceNodeId, targetNodeId, predecessorsAStarLatLon);
+    std::cout << "" << std::endl;
 
+    std::cout << "A* In-admissible" << std::endl;
     std::unordered_map<int, int> predecessorsAStarManhattan;
     graph.aStarEarthManhattanDist(sourceNodeId, targetNodeId, predecessorsAStarManhattan);
-    printGraphShortestPath(graph, sourceNodeId, targetNodeId, predecessorsAStarManhattan); */
-
-
+    printGraphShortestPath(graph, sourceNodeId, targetNodeId, predecessorsAStarManhattan);
+    std::cout << "" << std::endl;
 
     // Pasting in code from HW2
     sf::Clock clock;
@@ -688,10 +671,7 @@ int main()
                 positions.push_back(dotPosVect);
                 positionsBottomRight.push_back(dotPosVect);
             }
-/*             if(isInUpperRoom) {
-                positions.push_back(dotPosVect);
-                positionsTopRoom.push_back(dotPosVect);
-            } */
+
             if(isInTopRoomA) {
                 positions.push_back(dotPosVect);
                 positionsTopRoomA.push_back(dotPosVect);
@@ -735,7 +715,6 @@ int main()
 
     gameGraph.addConnection2DByCoordinates(380, 340, 420, 340);
 
-    //gameGraph.performGraphAppend(positionsTopRoom);
 
     gameGraph.performGraphAppend(positionsTopRoomA);
     gameGraph.performGraphAppend(positionsTopRoomB);
@@ -834,12 +813,10 @@ int main()
         if (frameCounter >= frameCountMark)
         {
             // Get the current mouse position in the window
-            sf::Vector2i mousePos = sf::Mouse::getPosition(window);
+            //sf::Vector2i mousePos = sf::Mouse::getPosition(window);
 
             // Optional: Display the mouse position in the console
-            std::cout << "\rMouse position: " << mousePos.x << ", " << mousePos.y << "      "<< std::flush;
-            //std::cout << "\rMouse tile position: " << convertPixelToTileNum(mousePos.x, tileSize) << ", " << convertPixelToTileNum(mousePos.y, tileSize) << "      "<< std::flush;
-            //std::flush(std::cout); // Flush to update the position in the console in real-time
+            //std::cout << "\rMouse position: " << mousePos.x << ", " << mousePos.y << "      "<< std::flush;
 
             sf::Time elapsed = clock.restart();
             float timeDelta = elapsed.asMilliseconds();
@@ -869,13 +846,9 @@ int main()
                     kinemMouseClickObj = nullptr;
                 }
 
-                int tileNumX = convertPixelToTileNum(localPositionX, tileSize);
-                int tileNumY = convertPixelToTileNum(localPositionY, tileSize);
-                //std::cout << "TILE NUMS OF CLICK: " << tileNumX << ", " << tileNumY << std::endl;
                 // Gets location of grid tile dot closest to the mouse click.
                 kinemMouseClickObj = new Kinematic(sf::Vector2f(convertPixelDimToTileDotDim(localPositionX, tileSize), convertPixelDimToTileDotDim(localPositionY, tileSize)), 0, sf::Vector2f(0, 0), 0);
                 sf::Vector2f kinemMouseClickObjPos = kinemMouseClickObj->getPosition();
-                //std::cout << "MOUSE CLICK TILE DOT: " << kinemMouseClickObjPos.x << ", " << kinemMouseClickObjPos.y << std::endl;
 
                 nodeNearClick = gameGraph.findNodeByPosition(kinemMouseClickObjPos.x, kinemMouseClickObjPos.y);
 
@@ -903,10 +876,7 @@ int main()
                             kinemArriveGoalObj = nullptr; // To prevent dangling pointers
                         }
                         kinemArriveGoalObj = new Kinematic(sf::Vector2f(currentArriveGoalNode->getX(), currentArriveGoalNode->getY()), 0, sf::Vector2f(0, 0), 0);
-    /*                     if (currentArriveGoalNode != nullptr) {
-                            delete currentArriveGoalNode;
-                            currentArriveGoalNode = nullptr; // To prevent dangling pointers
-                        } */
+
                     }
 
 
@@ -926,7 +896,6 @@ int main()
                 if (kinemArriveGoalObj != nullptr) {
                     Arrive arriveBehavior(kinemArriveGoalObj, spriteB);
                     arriveBehavior.execute(timeDelta);
-                    // std::cout << spriteB->getVelocityVector().x << ", " << spriteB->getVelocityVector().y << std::endl;
 
                     Face faceBehavior(kinemArriveGoalObj, spriteB);
                     faceBehavior.execute(timeDelta);
@@ -959,14 +928,10 @@ int main()
                         }
                     }
                     
-
-
                 }
 
             }
 
-
-            //myCollection.deleteMarkedSprites();
             steeringCollection.deleteMarkedSprites();
             
         }
@@ -974,7 +939,6 @@ int main()
         for(int i = 0; i < static_cast<int>(breadcrumbs.size()); i++) {
             breadcrumbs[i].draw(&window);
         }
-        //myCollection.drawAll(window);
         steeringCollection.drawAll(window);
         // Draw all the walls
         for (const auto& wall : walls) {
