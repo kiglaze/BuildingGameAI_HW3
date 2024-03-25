@@ -1,7 +1,8 @@
 ### How to build and execute program:
 ```
-g++ -o main main.cpp
-./main
+make clean
+make
+./sfml-app
 ```
 ### Generation of graph diagram:
 - graph_dot_file.dot gets generated from running the main program.
