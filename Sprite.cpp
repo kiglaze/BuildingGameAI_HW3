@@ -48,7 +48,7 @@ void Sprite::dropSomeCrumbs() {
     }
     else
     {
-        drop_timer = 15.f;
+        drop_timer = 5.f;
         bc_position = getPosition();
         breadcrumbs->at(crumb_idx).drop(bc_position);
 
